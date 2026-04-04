@@ -1,0 +1,2 @@
+# Shared TypeScript types — initialized in Phase 7
+# Run: npm init -y && npm install -D typescript

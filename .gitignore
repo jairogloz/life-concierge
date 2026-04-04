@@ -1,0 +1,48 @@
+# Go
+backend/bin/
+backend/*.exe
+backend/*.test
+backend/vendor/
+*.out
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Node / npm
+node_modules/
+dist/
+.next/
+build/
+*.tsbuildinfo
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Expo / React Native
+.expo/
+frontend-mobile/.expo/
+frontend-mobile/node_modules/
+frontend-web/node_modules/
+shared-types/node_modules/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage
+coverage/
+*.cover
+
+# Railway / infra
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
