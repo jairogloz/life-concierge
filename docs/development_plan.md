@@ -271,25 +271,25 @@ _Goal: Usable browser UI exercising all backend endpoints built so far._
 
 ### Scaffold
 
-- ⬜ `cd frontend-web && npm create vite@latest . -- --template react-ts`
-- ⬜ Install: `@clerk/clerk-react`, `react-router-dom`, `axios`, `tailwindcss`
-- 🔑 Set `VITE_CLERK_PUBLISHABLE_KEY` in `frontend-web/.env`
+- ✅ `cd frontend-web && npm create vite@latest . -- --template react-ts`
+- ✅ Install: `@clerk/clerk-react`, `react-router-dom`, `axios`, `tailwindcss`
+- ✅ Set `VITE_CLERK_PUBLISHABLE_KEY` in `frontend-web/.env`
 
 ### Auth
 
-- ⬜ Wrap app in `<ClerkProvider>`
-- ⬜ Sign-in / Sign-up pages using Clerk components
-- ⬜ Protected route wrapper
-- ⬜ API client that auto-attaches Clerk JWT to every request
+- ✅ Wrap app in `<ClerkProvider>`
+- ✅ Sign-in / Sign-up pages using Clerk components
+- ✅ Protected route wrapper (`src/components/ProtectedRoute.tsx`)
+- ✅ API client that auto-attaches Clerk JWT to every request (`src/lib/useApi.ts`)
 
 ### Pages
 
-- ⬜ **Today Dashboard** (`/`) — `GET /api/v1/tasks/ranked`, renders prioritized list
-- ⬜ **Roles** (`/roles`) — CRUD with weight slider
-- ⬜ **Goals** (`/goals`) — list by role, hierarchy view
-- ⬜ **Tasks** (`/tasks`) — list with filters, create, edit, mark complete
-- ⬜ **Quick Capture** — floating input → AI inbox → accept / edit / reject
-- ⬜ Basic responsive sidebar layout
+- ✅ **Today Dashboard** (`/`) — `GET /api/v1/tasks/ranked`, renders prioritized list
+- ✅ **Roles** (`/roles`) — CRUD with weight slider
+- ✅ **Goals** (`/goals`) — list by role, hierarchy view
+- ✅ **Tasks** (`/tasks`) — list with filters, create, edit, mark complete
+- ✅ **Quick Capture** (`/inbox`) — floating input → AI inbox → accept / reject
+- ✅ Basic responsive sidebar layout
 
 ### ✅ Testable milestone: Full daily workflow in browser — capture, rank, complete
 
@@ -492,7 +492,7 @@ _Goal: Engagement layer without distorting real priorities._
 | 4     | Tasks domain                           | ✅     |
 | 5     | Ranking engine                         | ✅     |
 | 6     | AI task agent + inbox                  | ✅     |
-| 7     | Frontend web MVP                       | ⬜     |
+| 7     | Frontend web MVP                       | ✅     |
 | 8     | Frontend mobile MVP                    | ⬜     |
 | 9     | Finance domain                         | ⬜     |
 | 10    | Wishlist decision engine               | ⬜     |

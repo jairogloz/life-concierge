@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"strings"
 
 	clerkjwt "github.com/clerk/clerk-sdk-go/v2/jwt"
@@ -39,6 +40,7 @@ func RequireAuth() fiber.Handler {
 			Token: token,
 		})
 		if err != nil {
+			log.Printf("[auth] JWT verification failed: %v", err)
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": fiber.Map{
 					"code":    "unauthorized",
