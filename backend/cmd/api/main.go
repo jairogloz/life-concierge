@@ -14,6 +14,29 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 
+	roleshttp "github.com/jairogloz/life-concierge/internal/roles/adapters/http"
+	rolespostgres "github.com/jairogloz/life-concierge/internal/roles/adapters/postgres"
+	rolesapp "github.com/jairogloz/life-concierge/internal/roles/application"
+
+	goalshttp "github.com/jairogloz/life-concierge/internal/goals/adapters/http"
+	goalspostgres "github.com/jairogloz/life-concierge/internal/goals/adapters/postgres"
+	goalsapp "github.com/jairogloz/life-concierge/internal/goals/application"
+
+	taskshttp "github.com/jairogloz/life-concierge/internal/tasks/adapters/http"
+	taskspostgres "github.com/jairogloz/life-concierge/internal/tasks/adapters/postgres"
+	tasksapp "github.com/jairogloz/life-concierge/internal/tasks/application"
+
+	rankinghttp "github.com/jairogloz/life-concierge/internal/ranking/adapters/http"
+	rankingpostgres "github.com/jairogloz/life-concierge/internal/ranking/adapters/postgres"
+	rankingapp "github.com/jairogloz/life-concierge/internal/ranking/application"
+
+	inboxcontext "github.com/jairogloz/life-concierge/internal/ai_suggestions/adapters/context"
+	inboxhttp "github.com/jairogloz/life-concierge/internal/ai_suggestions/adapters/http"
+	inboxopenai "github.com/jairogloz/life-concierge/internal/ai_suggestions/adapters/openai"
+	inboxpostgres "github.com/jairogloz/life-concierge/internal/ai_suggestions/adapters/postgres"
+	inboxapp "github.com/jairogloz/life-concierge/internal/ai_suggestions/application"
+	sharedai "github.com/jairogloz/life-concierge/internal/shared/ai"
+
 	"github.com/jairogloz/life-concierge/internal/shared/config"
 	"github.com/jairogloz/life-concierge/internal/shared/database"
 	healthhandler "github.com/jairogloz/life-concierge/internal/shared/handlers/health"
@@ -58,13 +81,37 @@ func main() {
 	// ── Routes: public ───────────────────────────────────────────────────────
 	app.Get("/health", healthhandler.Handler(db))
 
+	// ── Domain setup ─────────────────────────────────────────────────────────
+	rolesRepo := rolespostgres.NewRoleRepository(db)
+	rolesService := rolesapp.NewRoleService(rolesRepo)
+
+	goalsRepo := goalspostgres.NewGoalRepository(db)
+	goalsService := goalsapp.NewGoalService(goalsRepo)
+
+	tasksRepo := taskspostgres.NewTaskRepository(db)
+	tasksService := tasksapp.NewTaskService(tasksRepo)
+
+	rankingRepo := rankingpostgres.NewRankingRepository(db)
+	rankingService := rankingapp.NewRankingService(rankingRepo)
+
+	// AI inbox
+	openaiClient := sharedai.NewOpenAIClient(cfg.OpenAIAPIKey)
+	inboxRepo := inboxpostgres.NewSuggestionRepository(db)
+	rolesReader := inboxcontext.NewRolesReader(rolesRepo)
+	goalsReader := inboxcontext.NewGoalsReader(goalsRepo)
+	taskAgent := inboxopenai.NewTaskAgent(openaiClient, cfg.OpenAIModel)
+	inboxService := inboxapp.NewInboxService(inboxRepo, taskAgent, rolesReader, goalsReader, tasksService)
+
 	// ── Routes: authenticated API v1 ─────────────────────────────────────────
 	// All routes under /api/v1 require a valid Clerk JWT.
-	_ = app.Group("/api/v1", middleware.RequireAuth())
-	// Domain routes registered here in subsequent phases:
-	// roles.RegisterRoutes(api, db)
-	// goals.RegisterRoutes(api, db)
-	// tasks.RegisterRoutes(api, db)
+	api := app.Group("/api/v1", middleware.RequireAuth())
+	roleshttp.RegisterRoutes(api, rolesService)
+	goalshttp.RegisterRoutes(api, goalsService)
+	taskshttp.RegisterRoutes(api, tasksService)
+	rankinghttp.RegisterRoutes(api, rankingService)
+	inboxhttp.RegisterRoutes(api, inboxService)
+	// Future domains registered here:
+	// taskshttp.RegisterRoutes(api, ...)
 
 	// ── Graceful shutdown ─────────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)

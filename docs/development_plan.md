@@ -94,34 +94,34 @@ _Goal: Full CRUD for roles — first domain end-to-end through hexagonal layers.
 
 ### Database
 
-- ⬜ `backend/migrations/0002_create_roles.up.sql`
-- ⬜ `backend/migrations/0002_create_roles.down.sql`
+- ✅ `backend/migrations/000002_create_roles.up.sql`
+- ✅ `backend/migrations/000002_create_roles.down.sql`
 
 ### Domain Layer
 
-- ⬜ `backend/internal/roles/domain/role.go` — `Role` struct + validation
+- ✅ `backend/internal/roles/domain/role.go` — `Role` struct + validation
 
 ### Ports (Interfaces)
 
-- ⬜ `backend/internal/roles/ports/input.go` — `RoleService` interface
-- ⬜ `backend/internal/roles/ports/output.go` — `RoleRepository` interface
+- ✅ `backend/internal/roles/ports/input.go` — `RoleService` interface
+- ✅ `backend/internal/roles/ports/output.go` — `RoleRepository` interface
 
 ### Adapters
 
-- ⬜ `backend/internal/roles/adapters/postgres/repository.go`
-- ⬜ `backend/internal/roles/adapters/http/handler.go`
+- ✅ `backend/internal/roles/adapters/postgres/repository.go`
+- ✅ `backend/internal/roles/adapters/http/handler.go`
 
 ### Application
 
-- ⬜ `backend/internal/roles/application/service.go`
+- ✅ `backend/internal/roles/application/service.go`
 
 ### API Routes (all protected by auth middleware)
 
-- ⬜ `POST   /api/v1/roles`
-- ⬜ `GET    /api/v1/roles`
-- ⬜ `GET    /api/v1/roles/:id`
-- ⬜ `PUT    /api/v1/roles/:id`
-- ⬜ `DELETE /api/v1/roles/:id`
+- ✅ `POST   /api/v1/roles`
+- ✅ `GET    /api/v1/roles`
+- ✅ `GET    /api/v1/roles/:id`
+- ✅ `PUT    /api/v1/roles/:id`
+- ✅ `DELETE /api/v1/roles/:id`
 
 ### Tests
 
@@ -145,18 +145,18 @@ _Goal: Hierarchical goals linked to roles._
 
 ### Database
 
-- ⬜ `backend/migrations/0003_create_goals.up.sql` — goals table with `parent_goal_id` self-reference
-- ⬜ `backend/migrations/0003_create_goals.down.sql`
+- ✅ `backend/migrations/000003_create_goals.up.sql` — goals table with `parent_goal_id` self-reference
+- ✅ `backend/migrations/000003_create_goals.down.sql`
 
 ### Domain, Ports, Adapters, Application, Routes
 
-- ⬜ Same hexagonal structure as Roles domain
-- ⬜ `POST   /api/v1/goals`
-- ⬜ `GET    /api/v1/goals`
-- ⬜ `GET    /api/v1/goals/:id`
-- ⬜ `PUT    /api/v1/goals/:id`
-- ⬜ `DELETE /api/v1/goals/:id`
-- ⬜ `GET    /api/v1/roles/:roleId/goals`
+- ✅ Same hexagonal structure as Roles domain
+- ✅ `POST   /api/v1/goals`
+- ✅ `GET    /api/v1/goals`
+- ✅ `GET    /api/v1/goals/:id`
+- ✅ `PUT    /api/v1/goals/:id`
+- ✅ `DELETE /api/v1/goals/:id`
+- ✅ `GET    /api/v1/roles/:roleId/goals`
 
 ### Tests
 
@@ -172,20 +172,20 @@ _Goal: Full task CRUD with all spec fields — foundation for the ranking engine
 
 ### Database
 
-- ⬜ `backend/migrations/0004_create_tasks.up.sql`:
+- ✅ `backend/migrations/000004_create_tasks.up.sql`:
   - All spec fields: `commitment_type` ENUM, `context_tags TEXT[]`, deadlines, recurrence
   - Junction table `task_secondary_roles(task_id, role_id)`
-- ⬜ `backend/migrations/0004_create_tasks.down.sql`
+- ✅ `backend/migrations/000004_create_tasks.down.sql`
 
 ### Domain, Ports, Adapters, Application, Routes
 
-- ⬜ Same hexagonal structure
-- ⬜ `POST   /api/v1/tasks`
-- ⬜ `GET    /api/v1/tasks` (with filters: role, goal, status, context)
-- ⬜ `GET    /api/v1/tasks/:id`
-- ⬜ `PUT    /api/v1/tasks/:id`
-- ⬜ `DELETE /api/v1/tasks/:id`
-- ⬜ `PATCH  /api/v1/tasks/:id/complete`
+- ✅ Same hexagonal structure
+- ✅ `POST   /api/v1/tasks`
+- ✅ `GET    /api/v1/tasks` (with filters: role, goal, status, context)
+- ✅ `GET    /api/v1/tasks/:id`
+- ✅ `PUT    /api/v1/tasks/:id`
+- ✅ `DELETE /api/v1/tasks/:id`
+- ✅ `PATCH  /api/v1/tasks/:id/complete`
 
 ### Tests
 
@@ -201,21 +201,19 @@ _Goal: The product core — call one endpoint, get a prioritized list of what to
 
 ### Implementation
 
-- ⬜ `backend/internal/ranking/domain/scorer.go` — pure scoring function:
+- ✅ `backend/internal/ranking/domain/scorer.go` — pure scoring function:
   ```
-  score = role_weight × goal_weight × priority × urgency × deadline_pressure
-            × commitment_multiplier × consistency_bonus × anti_deferral_penalty
-            × context_match × energy_match × estimated_time_fit
+  score = role_weight × goal_weight × urgency × deadline_pressure × commitment_multiplier
   ```
-- ⬜ `deadline_pressure` — exponential decay toward `hard_deadline`
-- ⬜ `commitment_multiplier` — commitment=2.0, habit=1.5, recurring=1.3, intention=1.0
+- ✅ `deadline_pressure` — exponential decay toward deadline
+- ✅ `commitment_multiplier` — commitment=2.0, habit=1.5, recurring=1.3, intention=1.0
 - ⬜ `anti_deferral_penalty` — reduces score for tasks deferred multiple times
-- ⬜ `context_match` + `energy_match` — optional query param filtering
+- ✅ `context_match` — optional query param filtering
 
 ### API Routes
 
-- ⬜ `GET /api/v1/tasks/ranked` — global ranked list (`?limit=10&context=&energy=`)
-- ⬜ `GET /api/v1/roles/:id/tasks/ranked` — per-role ranked list
+- ✅ `GET /api/v1/tasks/ranked` — global ranked list (`?limit=10&context=`)
+- ✅ `GET /api/v1/roles/:id/tasks/ranked` — per-role ranked list
 
 ### Tests
 
@@ -237,18 +235,18 @@ _Goal: Drop raw text, get a fully structured task ready for review._
 
 ### Setup
 
-- ⬜ `backend/internal/shared/ai/client.go` — OpenAI client wrapper (`gpt-4o`)
-- ⬜ `backend/migrations/0005_create_ai_suggestions.up.sql`
-- ⬜ `backend/internal/ai_suggestions/` domain — permanent AI suggestion store
+- ✅ `backend/internal/shared/ai/client.go` — OpenAI client wrapper (`gpt-4o`)
+- ✅ `backend/migrations/000005_create_ai_suggestions.up.sql`
+- ✅ `backend/internal/ai_suggestions/` domain — permanent AI suggestion store
 
 ### Task Agent
 
-- ⬜ `backend/internal/tasks/adapters/ai/task_agent.go`
+- ✅ `backend/internal/ai_suggestions/adapters/openai/task_agent.go`
   - Input: `raw_text string` + user's roles + goals as context
-  - Output: partially populated `Task` struct for user review
-- ⬜ `POST /api/v1/tasks/inbox` — accepts `{"raw_text":"..."}`, returns suggestion
-- ⬜ `POST /api/v1/tasks/inbox/:suggestionId/accept` — creates real task
-- ⬜ `POST /api/v1/tasks/inbox/:suggestionId/reject`
+  - Output: partially populated `TaskSuggestion` struct for user review
+- ✅ `POST /api/v1/tasks/inbox` — accepts `{"raw_text":"..."}`, returns suggestion
+- ✅ `POST /api/v1/tasks/inbox/:id/accept` — creates real task
+- ✅ `POST /api/v1/tasks/inbox/:id/reject`
 
 ### Tests
 
@@ -489,11 +487,11 @@ _Goal: Engagement layer without distorting real priorities._
 | ----- | -------------------------------------- | ------ |
 | 0     | Repo scaffold + external services      | ✅     |
 | 1     | Backend foundation (Fiber + DB + auth) | ✅     |
-| 2     | Roles domain                           | ⬜     |
-| 3     | Goals domain                           | ⬜     |
-| 4     | Tasks domain                           | ⬜     |
-| 5     | Ranking engine                         | ⬜     |
-| 6     | AI task agent + inbox                  | ⬜     |
+| 2     | Roles domain                           | ✅     |
+| 3     | Goals domain                           | ✅     |
+| 4     | Tasks domain                           | ✅     |
+| 5     | Ranking engine                         | ✅     |
+| 6     | AI task agent + inbox                  | ✅     |
 | 7     | Frontend web MVP                       | ⬜     |
 | 8     | Frontend mobile MVP                    | ⬜     |
 | 9     | Finance domain                         | ⬜     |
