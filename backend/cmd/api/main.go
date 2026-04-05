@@ -107,11 +107,11 @@ func main() {
 	api := app.Group("/api/v1", middleware.RequireAuth())
 	roleshttp.RegisterRoutes(api, rolesService)
 	goalshttp.RegisterRoutes(api, goalsService)
-	taskshttp.RegisterRoutes(api, tasksService)
+	// ranking and inbox registered BEFORE tasks so /tasks/ranked and /tasks/inbox
+	// are matched as static paths before the parametric /tasks/:id route.
 	rankinghttp.RegisterRoutes(api, rankingService)
 	inboxhttp.RegisterRoutes(api, inboxService)
-	// Future domains registered here:
-	// taskshttp.RegisterRoutes(api, ...)
+	taskshttp.RegisterRoutes(api, tasksService)
 
 	// ── Graceful shutdown ─────────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)
