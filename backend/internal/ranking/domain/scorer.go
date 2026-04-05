@@ -10,7 +10,7 @@ import (
 
 // ScoredTask pairs a task with its computed priority score and contributing weights.
 type ScoredTask struct {
-	*taskdomain.Task
+	Task       *taskdomain.Task `json:"task"`
 	Score      float64 `json:"score"`
 	RoleWeight float64 `json:"role_weight"`
 	GoalWeight float64 `json:"goal_weight"`
