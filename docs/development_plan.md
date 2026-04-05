@@ -250,7 +250,7 @@ _Goal: Drop raw text, get a fully structured task ready for review._
 
 ### Tests
 
-- ⬜ Unit tests with mocked AI client
+- ✅ Unit tests with mocked AI client (service + HTTP handler, 18 tests)
 - ⬜ Manual integration test with real API key 🔑
 
 ### ✅ Testable milestone
