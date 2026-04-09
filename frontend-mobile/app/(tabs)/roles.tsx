@@ -148,8 +148,8 @@ export default function RolesScreen() {
     async (silent = false) => {
       if (!silent) setLoading(true);
       try {
-        const res = await api.get<Role[]>('/roles');
-        setRoles(res.data ?? []);
+        const res = await api.get<{ data: Role[] }>('/roles');
+        setRoles(res.data.data ?? []);
       } catch {
         Alert.alert('Error', 'Failed to load roles.');
       } finally {

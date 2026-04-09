@@ -70,8 +70,8 @@ export default function TodayScreen() {
     async (silent = false) => {
       if (!silent) setLoading(true);
       try {
-        const res = await api.get<ScoredTask[]>('/tasks/ranked?limit=20');
-        setTasks(res.data ?? []);
+        const res = await api.get<{ data: ScoredTask[] }>('/tasks/ranked?limit=20');
+        setTasks(res.data.data ?? []);
       } catch (err) {
         console.error('Failed to fetch ranked tasks', err);
       } finally {
