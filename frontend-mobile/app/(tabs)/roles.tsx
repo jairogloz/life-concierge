@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,10 +13,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useApi } from '@/lib/useApi';
-import type { Role } from '@/types';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useApi } from "@/lib/useApi";
+import type { Role } from "@/types";
 
 const WEIGHT_MAX = 10;
 
@@ -42,46 +42,57 @@ function RoleModal({
   onClose: () => void;
   onSave: (data: RoleFormData) => Promise<void>;
 }) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [weight, setWeight] = useState('5');
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [weight, setWeight] = useState("5");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (visible) {
-      setName(initial?.name ?? '');
-      setDescription(initial?.description ?? '');
+      setName(initial?.name ?? "");
+      setDescription(initial?.description ?? "");
       setWeight(String(initial?.weight ?? 5));
     }
   }, [visible, initial]);
 
   async function handleSave() {
     if (!name.trim()) {
-      Alert.alert('Validation', 'Name is required.');
+      Alert.alert("Validation", "Name is required.");
       return;
     }
     const w = parseFloat(weight);
     if (isNaN(w) || w < 0 || w > 10) {
-      Alert.alert('Validation', 'Weight must be 0–10.');
+      Alert.alert("Validation", "Weight must be 0–10.");
       return;
     }
     setSaving(true);
     try {
-      await onSave({ name: name.trim(), description: description.trim(), weight });
+      await onSave({
+        name: name.trim(),
+        description: description.trim(),
+        weight,
+      });
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      onRequestClose={onClose}
+    >
       <KeyboardAvoidingView
         style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.modalCard}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{initial?.id ? 'Edit Role' : 'New Role'}</Text>
+            <Text style={styles.modalTitle}>
+              {initial?.id ? "Edit Role" : "New Role"}
+            </Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={22} color="#6b7280" />
             </TouchableOpacity>
@@ -126,7 +137,9 @@ function RoleModal({
               {saving ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.btnText}>{initial?.id ? 'Save Changes' : 'Create Role'}</Text>
+                <Text style={styles.btnText}>
+                  {initial?.id ? "Save Changes" : "Create Role"}
+                </Text>
               )}
             </TouchableOpacity>
           </ScrollView>
@@ -148,16 +161,16 @@ export default function RolesScreen() {
     async (silent = false) => {
       if (!silent) setLoading(true);
       try {
-        const res = await api.get<{ data: Role[] }>('/roles');
+        const res = await api.get<{ data: Role[] }>("/roles");
         setRoles(res.data.data ?? []);
       } catch {
-        Alert.alert('Error', 'Failed to load roles.');
+        Alert.alert("Error", "Failed to load roles.");
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [api]
+    [api],
   );
 
   useEffect(() => {
@@ -184,27 +197,27 @@ export default function RolesScreen() {
       if (editTarget?.id) {
         await api.put(`/roles/${editTarget.id}`, payload);
       } else {
-        await api.post('/roles', payload);
+        await api.post("/roles", payload);
       }
       setModalVisible(false);
       fetchRoles(true);
     } catch {
-      Alert.alert('Error', 'Could not save role.');
+      Alert.alert("Error", "Could not save role.");
     }
   }
 
   async function handleDelete(role: Role) {
-    Alert.alert('Delete Role', `Delete "${role.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert("Delete Role", `Delete "${role.name}"?`, [
+      { text: "Cancel", style: "cancel" },
       {
-        text: 'Delete',
-        style: 'destructive',
+        text: "Delete",
+        style: "destructive",
         onPress: async () => {
           try {
             await api.delete(`/roles/${role.id}`);
             setRoles((prev) => prev.filter((r) => r.id !== role.id));
           } catch {
-            Alert.alert('Error', 'Could not delete role.');
+            Alert.alert("Error", "Could not delete role.");
           }
         },
       },
@@ -240,10 +253,16 @@ export default function RolesScreen() {
               </View>
             </View>
             <View style={styles.cardActions}>
-              <TouchableOpacity onPress={() => openEdit(item)} style={styles.iconBtn}>
+              <TouchableOpacity
+                onPress={() => openEdit(item)}
+                style={styles.iconBtn}
+              >
                 <Ionicons name="pencil-outline" size={18} color="#4f46e5" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDelete(item)} style={styles.iconBtn}>
+              <TouchableOpacity
+                onPress={() => handleDelete(item)}
+                style={styles.iconBtn}
+              >
                 <Ionicons name="trash-outline" size={18} color="#ef4444" />
               </TouchableOpacity>
             </View>
@@ -263,12 +282,18 @@ export default function RolesScreen() {
           <View style={styles.empty}>
             <Ionicons name="people-outline" size={56} color="#d1d5db" />
             <Text style={styles.emptyText}>No roles yet</Text>
-            <Text style={styles.emptySubtext}>Tap + to add your first life role.</Text>
+            <Text style={styles.emptySubtext}>
+              Tap + to add your first life role.
+            </Text>
           </View>
         }
       />
 
-      <TouchableOpacity style={styles.fab} onPress={openCreate} accessibilityLabel="Add role">
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={openCreate}
+        accessibilityLabel="Add role"
+      >
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
 
@@ -283,93 +308,109 @@ export default function RolesScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
   list: { padding: 16, gap: 12 },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
   },
   cardContent: { flex: 1 },
-  roleName: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  roleDesc: { fontSize: 13, color: '#6b7280', marginTop: 2 },
-  weightRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
+  roleName: { fontSize: 16, fontWeight: "700", color: "#111827" },
+  roleDesc: { fontSize: 13, color: "#6b7280", marginTop: 2 },
+  weightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    gap: 8,
+  },
   weightTrack: {
     flex: 1,
     height: 6,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: "#e5e7eb",
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
-  weightFill: { height: '100%', backgroundColor: '#4f46e5', borderRadius: 3 },
-  weightLabel: { fontSize: 12, color: '#6b7280', width: 24, textAlign: 'right' },
-  cardActions: { flexDirection: 'row', gap: 4, marginLeft: 8 },
+  weightFill: { height: "100%", backgroundColor: "#4f46e5", borderRadius: 3 },
+  weightLabel: {
+    fontSize: 12,
+    color: "#6b7280",
+    width: 24,
+    textAlign: "right",
+  },
+  cardActions: { flexDirection: "row", gap: 4, marginLeft: 8 },
   iconBtn: { padding: 6 },
   fab: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 24,
     right: 24,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4f46e5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#4f46e5',
+    backgroundColor: "#4f46e5",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#4f46e5",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 6,
   },
-  empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#374151' },
-  emptySubtext: { fontSize: 13, color: '#9ca3af' },
+  empty: { alignItems: "center", paddingTop: 80, gap: 8 },
+  emptyText: { fontSize: 18, fontWeight: "600", color: "#374151" },
+  emptySubtext: { fontSize: 13, color: "#9ca3af" },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
   },
   modalCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
-    maxHeight: '85%',
+    maxHeight: "85%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
   },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
-  label: { fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 4, textTransform: 'uppercase' },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  label: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6b7280",
+    marginBottom: 4,
+    textTransform: "uppercase",
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#111827',
-    backgroundColor: '#f9fafb',
+    color: "#111827",
+    backgroundColor: "#f9fafb",
     marginBottom: 14,
   },
-  textarea: { minHeight: 80, textAlignVertical: 'top' },
+  textarea: { minHeight: 80, textAlignVertical: "top" },
   btn: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: "#4f46e5",
     borderRadius: 10,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 4,
   },
   btnDisabled: { opacity: 0.5 },
-  btnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  btnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
 });

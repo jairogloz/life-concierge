@@ -301,22 +301,22 @@ _Goal: Core daily workflow available on phone._
 
 ### Scaffold
 
-- ⬜ `cd frontend-mobile && npx create-expo-app@latest . --template blank-typescript`
-- ⬜ Install: `@clerk/clerk-expo`, `expo-secure-store`, `expo-router`, `axios`
-- 🔑 Set `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` in `frontend-mobile/.env`
+- ✅ `cd frontend-mobile && npx create-expo-app@latest . --template blank-typescript`
+- ✅ Install: `@clerk/clerk-expo`, `expo-secure-store`, `expo-router`, `axios`
+- ✅ Set `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` in `frontend-mobile/.env`
 
 ### Auth
 
-- ⬜ Clerk Expo token cache via `expo-secure-store`
-- ⬜ Sign-in / sign-up screens
-- ⬜ Protected navigation
+- ✅ Clerk Expo token cache via `expo-secure-store`
+- ✅ Sign-in screen (`/(auth)/sign-in`)
+- ✅ Protected navigation (root layout auto-redirects by sign-in state)
 
 ### Screens
 
-- ⬜ **Today** (Home tab) — ranked tasks, swipe to complete
-- ⬜ **Quick Capture** (FAB) — text note → AI parse → confirm
-- ⬜ **Roles** tab — view/edit roles
-- ⬜ Basic tab navigation (Today / Capture / Roles)
+- ✅ **Today** (Home tab) — ranked tasks, pull-to-refresh, tap to complete
+- ✅ **Quick Capture** (Capture tab) — text note → AI parse → accept/reject
+- ✅ **Roles** tab — full CRUD with weight bar, bottom-sheet modal
+- ✅ Tab navigation (Today / Capture / Roles)
 
 ### ✅ Testable milestone: Open app on phone, sign in, see ranked tasks, quick-capture a new task
 

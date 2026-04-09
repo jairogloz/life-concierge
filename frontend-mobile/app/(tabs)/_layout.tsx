@@ -1,7 +1,7 @@
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
-type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 
 type TabConfig = {
   name: string;
@@ -11,26 +11,41 @@ type TabConfig = {
 };
 
 const TABS: TabConfig[] = [
-  { name: 'index', title: 'Today', activeIcon: 'today', inactiveIcon: 'today-outline' },
-  { name: 'capture', title: 'Capture', activeIcon: 'add-circle', inactiveIcon: 'add-circle-outline' },
-  { name: 'roles', title: 'Roles', activeIcon: 'people', inactiveIcon: 'people-outline' },
+  {
+    name: "index",
+    title: "Today",
+    activeIcon: "today",
+    inactiveIcon: "today-outline",
+  },
+  {
+    name: "capture",
+    title: "Capture",
+    activeIcon: "add-circle",
+    inactiveIcon: "add-circle-outline",
+  },
+  {
+    name: "roles",
+    title: "Roles",
+    activeIcon: "people",
+    inactiveIcon: "people-outline",
+  },
 ];
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#4f46e5',
-        tabBarInactiveTintColor: '#9ca3af',
+        tabBarActiveTintColor: "#4f46e5",
+        tabBarInactiveTintColor: "#9ca3af",
         tabBarStyle: {
           borderTopWidth: 1,
-          borderTopColor: '#e5e7eb',
-          backgroundColor: '#fff',
+          borderTopColor: "#e5e7eb",
+          backgroundColor: "#fff",
           paddingBottom: 4,
         },
-        headerStyle: { backgroundColor: '#4f46e5' },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: '700' },
+        headerStyle: { backgroundColor: "#4f46e5" },
+        headerTintColor: "#fff",
+        headerTitleStyle: { fontWeight: "700" },
       }}
     >
       {TABS.map(({ name, title, activeIcon, inactiveIcon }) => (
@@ -40,7 +55,11 @@ export default function TabsLayout() {
           options={{
             title,
             tabBarIcon: ({ focused, color, size }) => (
-              <Ionicons name={focused ? activeIcon : inactiveIcon} size={size} color={color} />
+              <Ionicons
+                name={focused ? activeIcon : inactiveIcon}
+                size={size}
+                color={color}
+              />
             ),
           }}
         />

@@ -1,8 +1,8 @@
-import { useSignIn, useOAuth } from '@clerk/clerk-expo';
-import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
-import { useState } from 'react';
+import { useSignIn, useOAuth } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -13,34 +13,37 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-} from 'react-native';
+} from "react-native";
 
 // Required for OAuth redirect to complete inside the app
 WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
-  const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
+  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
   const router = useRouter();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
 
   async function handleGoogleSignIn() {
     setOauthLoading(true);
     try {
-      const { createdSessionId, setActive: setOAuthActive } = await startOAuthFlow({
-        redirectUrl: Linking.createURL('/(tabs)', { scheme: 'life-concierge' }),
-      });
+      const { createdSessionId, setActive: setOAuthActive } =
+        await startOAuthFlow({
+          redirectUrl: Linking.createURL("/(tabs)", {
+            scheme: "life-concierge",
+          }),
+        });
       if (createdSessionId && setOAuthActive) {
         await setOAuthActive({ session: createdSessionId });
-        router.replace('/(tabs)');
+        router.replace("/(tabs)");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Google sign-in failed.';
-      Alert.alert('Google Sign In Error', msg);
+      const msg = err instanceof Error ? err.message : "Google sign-in failed.";
+      Alert.alert("Google Sign In Error", msg);
     } finally {
       setOauthLoading(false);
     }
@@ -54,14 +57,16 @@ export default function SignInScreen() {
         identifier: email.trim(),
         password,
       });
-      if (result.status === 'complete') {
+      if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.replace('/(tabs)');
+        router.replace("/(tabs)");
       }
     } catch (err: unknown) {
       const msg =
-        err instanceof Error ? err.message : 'Sign-in failed. Please try again.';
-      Alert.alert('Sign In Error', msg);
+        err instanceof Error
+          ? err.message
+          : "Sign-in failed. Please try again.";
+      Alert.alert("Sign In Error", msg);
     } finally {
       setLoading(false);
     }
@@ -70,7 +75,7 @@ export default function SignInScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={styles.card}>
         <Text style={styles.title}>Life Concierge</Text>
@@ -132,15 +137,15 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
     padding: 24,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 28,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -148,69 +153,69 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
-    fontWeight: '700',
-    color: '#111827',
+    fontWeight: "700",
+    color: "#111827",
     marginBottom: 4,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
     marginBottom: 24,
-    textAlign: 'center',
+    textAlign: "center",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#111827',
+    color: "#111827",
     marginBottom: 14,
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
   },
   button: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: "#4f46e5",
     borderRadius: 10,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 6,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
     fontSize: 16,
   },
   dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: 16,
     gap: 10,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: "#e5e7eb",
   },
   dividerText: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: "#9ca3af",
   },
   googleButton: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: "#d1d5db",
     borderRadius: 10,
     paddingVertical: 14,
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
   googleButtonText: {
-    color: '#374151',
-    fontWeight: '600',
+    color: "#374151",
+    fontWeight: "600",
     fontSize: 16,
   },
 });

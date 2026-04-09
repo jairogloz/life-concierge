@@ -1,8 +1,8 @@
-import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
-import { tokenCache } from '@/lib/tokenCache';
-import { Slot, useRouter, useSegments } from 'expo-router';
-import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
+import { tokenCache } from "@/lib/tokenCache";
+import { Slot, useRouter, useSegments } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator, View } from "react-native";
 
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -14,32 +14,32 @@ function InitialLayout() {
   useEffect(() => {
     if (!isLoaded) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const inAuthGroup = segments[0] === "(auth)";
 
     if (!isSignedIn && !inAuthGroup) {
-      router.replace('/(auth)/sign-in');
+      router.replace("/(auth)/sign-in");
     } else if (isSignedIn && inAuthGroup) {
-      router.replace('/(tabs)');
+      router.replace("/(tabs)");
     }
   }, [isLoaded, isSignedIn, segments]);
 
   // Show spinner until Clerk is ready
   if (!isLoaded) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" />
       </View>
     );
   }
 
-  const inAuthGroup = segments[0] === '(auth)';
+  const inAuthGroup = segments[0] === "(auth)";
 
   // Block rendering protected screens until signed in.
   // This prevents tab screens from mounting (and firing API calls) before
   // the router.replace('/(auth)/sign-in') navigation has completed.
   if (!isSignedIn && !inAuthGroup) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -50,7 +50,10 @@ function InitialLayout() {
 
 export default function RootLayout() {
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+    <ClerkProvider
+      publishableKey={CLERK_PUBLISHABLE_KEY}
+      tokenCache={tokenCache}
+    >
       <InitialLayout />
     </ClerkProvider>
   );
