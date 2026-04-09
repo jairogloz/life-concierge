@@ -23,7 +23,21 @@ function InitialLayout() {
     }
   }, [isLoaded, isSignedIn, segments]);
 
+  // Show spinner until Clerk is ready
   if (!isLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  const inAuthGroup = segments[0] === '(auth)';
+
+  // Block rendering protected screens until signed in.
+  // This prevents tab screens from mounting (and firing API calls) before
+  // the router.replace('/(auth)/sign-in') navigation has completed.
+  if (!isSignedIn && !inAuthGroup) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" />
