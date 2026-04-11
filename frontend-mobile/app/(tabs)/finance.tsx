@@ -39,7 +39,10 @@ const TX_TYPES: TransactionType[] = ["income", "expense"];
 function SummaryCards({ summary }: { summary: FinanceSummary | null }) {
   if (!summary) return null;
   const fmt = (n: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(n);
   return (
     <View style={styles.summaryRow}>
       <View style={[styles.summaryCard, { borderLeftColor: "#4f46e5" }]}>
@@ -256,7 +259,14 @@ function AddTransactionModal({
     }
     setSaving(true);
     try {
-      await onSave({ account_id: accountId, type: txType, amount, category: category.trim(), description: description.trim(), date });
+      await onSave({
+        account_id: accountId,
+        type: txType,
+        amount,
+        category: category.trim(),
+        description: description.trim(),
+        date,
+      });
     } finally {
       setSaving(false);
     }
@@ -288,7 +298,10 @@ function AddTransactionModal({
                 {accounts.map((a) => (
                   <TouchableOpacity
                     key={a.id}
-                    style={[styles.chip, accountId === a.id && styles.chipActive]}
+                    style={[
+                      styles.chip,
+                      accountId === a.id && styles.chipActive,
+                    ]}
                     onPress={() => setAccountId(a.id)}
                   >
                     <Text
@@ -403,7 +416,10 @@ export default function FinanceScreen() {
       setAccounts((accRes.data as { data: Account[] }).data ?? []);
       setTransactions((txRes.data as { data: Transaction[] }).data ?? []);
     } catch (e: any) {
-      Alert.alert("Error", e?.response?.data?.error ?? "Failed to load finance data.");
+      Alert.alert(
+        "Error",
+        e?.response?.data?.error ?? "Failed to load finance data.",
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -435,7 +451,10 @@ export default function FinanceScreen() {
       setShowAddAccount(false);
       loadData();
     } catch (e: any) {
-      Alert.alert("Error", e?.response?.data?.error ?? "Failed to create account.");
+      Alert.alert(
+        "Error",
+        e?.response?.data?.error ?? "Failed to create account.",
+      );
       throw e;
     }
   }
@@ -460,7 +479,10 @@ export default function FinanceScreen() {
       setShowAddTx(false);
       loadData();
     } catch (e: any) {
-      Alert.alert("Error", e?.response?.data?.error ?? "Failed to save transaction.");
+      Alert.alert(
+        "Error",
+        e?.response?.data?.error ?? "Failed to save transaction.",
+      );
       throw e;
     }
   }
@@ -512,7 +534,7 @@ export default function FinanceScreen() {
                   <View key={acc.id} style={styles.accountCard}>
                     <Text style={styles.accountName}>{acc.name}</Text>
                     <Text style={styles.accountType}>
-                      {acc.account_type.replace("_", " ")}
+                      {acc.type.replace("_", " ")}
                     </Text>
                     <Text
                       style={[
@@ -585,10 +607,7 @@ export default function FinanceScreen() {
       />
 
       {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setShowAddTx(true)}
-      >
+      <TouchableOpacity style={styles.fab} onPress={() => setShowAddTx(true)}>
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
 
@@ -675,7 +694,12 @@ const styles = StyleSheet.create({
     color: "#111827",
     marginBottom: 2,
   },
-  accountType: { fontSize: 12, color: "#6b7280", marginBottom: 6, textTransform: "capitalize" },
+  accountType: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginBottom: 6,
+    textTransform: "capitalize",
+  },
   accountBalance: { fontSize: 18, fontWeight: "700" },
 
   // Transactions

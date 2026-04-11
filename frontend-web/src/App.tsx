@@ -7,6 +7,7 @@ import Roles from "./pages/Roles";
 import Goals from "./pages/Goals";
 import Tasks from "./pages/Tasks";
 import Inbox from "./pages/Inbox";
+import Finance from "./pages/Finance";
 
 export default function App() {
   return (

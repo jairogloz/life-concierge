@@ -28,19 +28,19 @@ type TransactionSplit struct {
 
 // Transaction represents a single financial movement on an account.
 type Transaction struct {
-	ID          string            `json:"id"`
-	AccountID   string            `json:"account_id"`
-	UserID      string            `json:"user_id"`
-	Type        TransactionType   `json:"type"`
-	Amount      float64           `json:"amount"`
-	Currency    string            `json:"currency"`
-	Category    string            `json:"category"`
-	RoleID      *string           `json:"role_id,omitempty"`
-	Description string            `json:"description"`
-	Date        time.Time         `json:"date"`
+	ID          string             `json:"id"`
+	AccountID   string             `json:"account_id"`
+	UserID      string             `json:"user_id"`
+	Type        TransactionType    `json:"type"`
+	Amount      float64            `json:"amount"`
+	Currency    string             `json:"currency"`
+	Category    string             `json:"category"`
+	RoleID      *string            `json:"role_id,omitempty"`
+	Description string             `json:"description"`
+	Date        time.Time          `json:"date"`
 	Splits      []TransactionSplit `json:"splits,omitempty"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
 }
 
 // Validate checks all required fields and business rules.
