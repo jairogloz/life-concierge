@@ -40,6 +40,7 @@ export default function App() {
           <Route path="goals" element={<Goals />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="inbox" element={<Inbox />} />
+          <Route path="finance" element={<Finance />} />
         </Route>
       </Routes>
     </BrowserRouter>

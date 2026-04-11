@@ -2,11 +2,12 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { UserButton } from '@clerk/clerk-react';
 
 const nav = [
-  { to: '/',       label: '🏠 Today'   },
-  { to: '/roles',  label: '🎭 Roles'   },
-  { to: '/goals',  label: '🎯 Goals'   },
-  { to: '/tasks',  label: '✅ Tasks'   },
-  { to: '/inbox',  label: '✨ Capture' },
+  { to: '/',        label: '🏠 Today'   },
+  { to: '/roles',   label: '🎭 Roles'   },
+  { to: '/goals',   label: '🎯 Goals'   },
+  { to: '/tasks',   label: '✅ Tasks'   },
+  { to: '/inbox',   label: '✨ Capture' },
+  { to: '/finance', label: '💰 Finance' },
 ];
 
 export default function Layout() {

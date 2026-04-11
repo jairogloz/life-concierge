@@ -328,7 +328,7 @@ _Goal: Full ledger — accounts, transactions, categories, splits, transfers._
 
 ### Database
 
-- ⬜ `backend/migrations/0006_create_finance.up.sql`:
+- ✅ `backend/migrations/0006_create_finance.up.sql`:
   - `accounts` — id, user_id, name, type ENUM, currency, balance
   - `transactions` — id, account_id, amount, currency, category, role_id, description, date
   - `transfers` — id, from_account_id, to_account_id, amount, currency, date
@@ -336,17 +336,17 @@ _Goal: Full ledger — accounts, transactions, categories, splits, transfers._
 
 ### Domain, Ports, Adapters, Application, Routes
 
-- ⬜ Same hexagonal structure for `finance` domain
-- ⬜ `POST/GET /api/v1/accounts`
-- ⬜ `POST/GET /api/v1/transactions` (with split support)
-- ⬜ `POST     /api/v1/transfers`
-- ⬜ `GET      /api/v1/finance/summary`
+- ✅ Same hexagonal structure for `finance` domain
+- ✅ `POST/GET /api/v1/accounts`
+- ✅ `POST/GET /api/v1/transactions` (with split support)
+- ✅ `POST     /api/v1/transfers`
+- ✅ `GET      /api/v1/finance/summary`
 
 ### Frontend (Web + Mobile)
 
-- ⬜ Accounts overview screen
-- ⬜ Log transaction form with split UI
-- ⬜ Transfer form
+- ✅ Accounts overview screen
+- ✅ Log transaction form with split UI
+- ✅ Transfer form
 
 ### ✅ Testable milestone: Log a split transaction (60% groceries / 40% household), verify account balance
 
@@ -494,7 +494,7 @@ _Goal: Engagement layer without distorting real priorities._
 | 6     | AI task agent + inbox                  | ✅     |
 | 7     | Frontend web MVP                       | ✅     |
 | 8     | Frontend mobile MVP                    | ⬜     |
-| 9     | Finance domain                         | ⬜     |
+| 9     | Finance domain                         | ✅     |
 | 10    | Wishlist decision engine               | ⬜     |
 | 11    | Health domain                          | ⬜     |
 | 12    | Timeline + daily strategy agent        | ⬜     |

@@ -37,6 +37,10 @@ import (
 	inboxapp "github.com/jairogloz/life-concierge/internal/ai_suggestions/application"
 	sharedai "github.com/jairogloz/life-concierge/internal/shared/ai"
 
+	financehttp "github.com/jairogloz/life-concierge/internal/finance/adapters/http"
+	financepostgres "github.com/jairogloz/life-concierge/internal/finance/adapters/postgres"
+	financeapp "github.com/jairogloz/life-concierge/internal/finance/application"
+
 	"github.com/jairogloz/life-concierge/internal/shared/config"
 	"github.com/jairogloz/life-concierge/internal/shared/database"
 	healthhandler "github.com/jairogloz/life-concierge/internal/shared/handlers/health"
@@ -102,6 +106,10 @@ func main() {
 	taskAgent := inboxopenai.NewTaskAgent(openaiClient, cfg.OpenAIModel)
 	inboxService := inboxapp.NewInboxService(inboxRepo, taskAgent, rolesReader, goalsReader, tasksService)
 
+	// Finance
+	financeRepo := financepostgres.NewFinanceRepository(db)
+	financeService := financeapp.NewFinanceService(financeRepo)
+
 	// ── Routes: authenticated API v1 ─────────────────────────────────────────
 	// All routes under /api/v1 require a valid Clerk JWT.
 	api := app.Group("/api/v1", middleware.RequireAuth())
@@ -112,6 +120,7 @@ func main() {
 	rankinghttp.RegisterRoutes(api, rankingService)
 	inboxhttp.RegisterRoutes(api, inboxService)
 	taskshttp.RegisterRoutes(api, tasksService)
+	financehttp.RegisterRoutes(api, financeService)
 
 	// ── Graceful shutdown ─────────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)

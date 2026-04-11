@@ -29,6 +29,12 @@ const TABS: TabConfig[] = [
     activeIcon: "people",
     inactiveIcon: "people-outline",
   },
+  {
+    name: "finance",
+    title: "Finance",
+    activeIcon: "wallet",
+    inactiveIcon: "wallet-outline",
+  },
 ];
 
 export default function TabsLayout() {

@@ -70,3 +70,50 @@ export interface AISuggestion {
   created_at: string;
   updated_at: string;
 }
+
+// ── Finance ──────────────────────────────────────────────────────────────────
+
+export type AccountType = 'checking' | 'savings' | 'cash' | 'investment' | 'credit_card' | 'other';
+export type TransactionType = 'income' | 'expense';
+
+export interface Account {
+  id: string;
+  user_id: string;
+  name: string;
+  type: AccountType;
+  currency: string;
+  balance: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TransactionSplit {
+  id: string;
+  transaction_id: string;
+  category: string;
+  amount: number;
+  percentage: number;
+}
+
+export interface Transaction {
+  id: string;
+  account_id: string;
+  user_id: string;
+  type: TransactionType;
+  amount: number;
+  currency: string;
+  category: string;
+  role_id: string | null;
+  description: string;
+  date: string;
+  splits: TransactionSplit[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FinanceSummary {
+  total_balance: number;
+  month_income: number;
+  month_expenses: number;
+  by_category: Record<string, number>;
+}
