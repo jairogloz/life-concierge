@@ -23,7 +23,7 @@ export function useApi(): AxiosInstance {
   }, [getToken]);
 
   return useMemo(() => {
-    const instance = axios.create({ baseURL: `${API_URL}/api/v1` });
+    const instance = axios.create({ baseURL: `${API_URL}/api/v1`, timeout: 8000 });
 
     instance.interceptors.request.use(async (config) => {
       const token = await getTokenRef.current();
