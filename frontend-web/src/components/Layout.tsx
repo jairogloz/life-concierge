@@ -8,6 +8,7 @@ const nav = [
   { to: "/tasks", label: "✅ Tasks" },
   { to: "/inbox", label: "✨ Capture" },
   { to: "/finance", label: "💰 Finance" },
+  { to: "/wishlist", label: "🛒 Wishlist" },
 ];
 
 export default function Layout() {

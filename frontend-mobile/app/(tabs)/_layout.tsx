@@ -35,6 +35,12 @@ const TABS: TabConfig[] = [
     activeIcon: "wallet",
     inactiveIcon: "wallet-outline",
   },
+  {
+    name: "wishlist",
+    title: "Wishlist",
+    activeIcon: "cart",
+    inactiveIcon: "cart-outline",
+  },
 ];
 
 export default function TabsLayout() {

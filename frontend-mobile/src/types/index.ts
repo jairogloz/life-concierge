@@ -117,3 +117,26 @@ export interface FinanceSummary {
   month_expenses: number;
   by_category: Record<string, number>;
 }
+
+// ── Wishlist ─────────────────────────────────────────────────────────────────
+
+export type WishlistVerdict = 'buy_now' | 'wait' | 'reject' | 'replace';
+
+export interface WishlistItem {
+  id: string;
+  user_id: string;
+  title: string;
+  price: number;
+  currency: string;
+  role_id: string | null;
+  goal_id: string | null;
+  importance: number;
+  roi_score: number | null;
+  emotional_score: number | null;
+  cooldown_days: number;
+  verdict: WishlistVerdict | null;
+  verdict_reasoning: string | null;
+  evaluated_at: string | null;
+  created_at: string;
+  updated_at: string;
+}

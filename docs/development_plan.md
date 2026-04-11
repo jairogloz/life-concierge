@@ -358,23 +358,23 @@ _Goal: Submit a potential purchase, get an AI-powered buy/wait/reject/replace ve
 
 ### Database
 
-- ⬜ `backend/migrations/0007_create_wishlist.up.sql`:
+- ✅ `backend/migrations/000007_create_wishlist.up.sql`:
   - `wishlist_items` — id, user_id, title, price, currency, role_id, goal_id,
     importance, roi_score, emotional_score, cooldown_days, verdict, verdict_reasoning, evaluated_at
 
-### Finance Agent
+### Wishlist Agent (hexagonal)
 
-- ⬜ `backend/internal/finance/adapters/ai/wishlist_agent.go`
+- ✅ `backend/internal/wishlist/adapters/openai/wishlist_agent.go`
   - Reads: account balances, goal alignment, role weight, item fields
   - Outputs verdict: `buy_now | wait | reject | replace`
-  - Stores result in `ai_suggestions` + updates item verdict
-- ⬜ `POST /api/v1/wishlist`
-- ⬜ `GET  /api/v1/wishlist`
-- ⬜ `POST /api/v1/wishlist/:id/evaluate`
+  - Updates item verdict + roi_score + emotional_score
+- ✅ `POST /api/v1/wishlist`
+- ✅ `GET  /api/v1/wishlist`
+- ✅ `POST /api/v1/wishlist/:id/evaluate`
 
 ### Frontend
 
-- ⬜ Wishlist screen with verdict badges
+- ✅ Wishlist screen with verdict badges (web + mobile)
 
 ### ✅ Testable milestone: Submit "noise-cancelling headphones $350" → AI verdict with reasoning
 
@@ -493,9 +493,9 @@ _Goal: Engagement layer without distorting real priorities._
 | 5     | Ranking engine                         | ✅     |
 | 6     | AI task agent + inbox                  | ✅     |
 | 7     | Frontend web MVP                       | ✅     |
-| 8     | Frontend mobile MVP                    | ⬜     |
+| 8     | Frontend mobile MVP                    | ✅     |
 | 9     | Finance domain                         | ✅     |
-| 10    | Wishlist decision engine               | ⬜     |
+| 10    | Wishlist decision engine               | ✅     |
 | 11    | Health domain                          | ⬜     |
 | 12    | Timeline + daily strategy agent        | ⬜     |
 | 13    | Gamification                           | ⬜     |

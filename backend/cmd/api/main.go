@@ -41,6 +41,12 @@ import (
 	financepostgres "github.com/jairogloz/life-concierge/internal/finance/adapters/postgres"
 	financeapp "github.com/jairogloz/life-concierge/internal/finance/application"
 
+	wishlhttp "github.com/jairogloz/life-concierge/internal/wishlist/adapters/http"
+	wishlcontext "github.com/jairogloz/life-concierge/internal/wishlist/adapters/context"
+	wishlopenai "github.com/jairogloz/life-concierge/internal/wishlist/adapters/openai"
+	wishlpostgres "github.com/jairogloz/life-concierge/internal/wishlist/adapters/postgres"
+	wishlapp "github.com/jairogloz/life-concierge/internal/wishlist/application"
+
 	"github.com/jairogloz/life-concierge/internal/shared/config"
 	"github.com/jairogloz/life-concierge/internal/shared/database"
 	healthhandler "github.com/jairogloz/life-concierge/internal/shared/handlers/health"
@@ -110,6 +116,14 @@ func main() {
 	financeRepo := financepostgres.NewFinanceRepository(db)
 	financeService := financeapp.NewFinanceService(financeRepo)
 
+	// Wishlist
+	wishlRepo := wishlpostgres.NewWishlistRepository(db)
+	wishlAgent := wishlopenai.NewWishlistAgent(openaiClient, cfg.OpenAIModel)
+	wishlRoles := wishlcontext.NewRolesReader(rolesRepo)
+	wishlGoals := wishlcontext.NewGoalsReader(goalsRepo)
+	wishlFinance := wishlcontext.NewFinanceReader(financeRepo)
+	wishlService := wishlapp.NewWishlistService(wishlRepo, wishlAgent, wishlRoles, wishlGoals, wishlFinance)
+
 	// ── Routes: authenticated API v1 ─────────────────────────────────────────
 	// All routes under /api/v1 require a valid Clerk JWT.
 	api := app.Group("/api/v1", middleware.RequireAuth())
@@ -121,6 +135,7 @@ func main() {
 	inboxhttp.RegisterRoutes(api, inboxService)
 	taskshttp.RegisterRoutes(api, tasksService)
 	financehttp.RegisterRoutes(api, financeService)
+	wishlhttp.RegisterRoutes(api, wishlService)
 
 	// ── Graceful shutdown ─────────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)

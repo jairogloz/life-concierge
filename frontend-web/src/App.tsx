@@ -42,6 +42,7 @@ export default function App() {
           <Route path="tasks" element={<Tasks />} />
           <Route path="inbox" element={<Inbox />} />
           <Route path="finance" element={<Finance />} />
+          <Route path="wishlist" element={<Wishlist />} />
         </Route>
       </Routes>
     </BrowserRouter>
