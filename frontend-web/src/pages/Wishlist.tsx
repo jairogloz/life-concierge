@@ -48,6 +48,8 @@ export default function Wishlist() {
       setItems(wRes.data.data ?? []);
       setRoles(rRes.data.data ?? []);
       setGoals(gRes.data.data ?? []);
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message ?? 'Failed to load wishlist data.');
     } finally {
       setLoading(false);
     }

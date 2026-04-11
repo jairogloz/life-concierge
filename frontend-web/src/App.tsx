@@ -8,6 +8,7 @@ import Goals from "./pages/Goals";
 import Tasks from "./pages/Tasks";
 import Inbox from "./pages/Inbox";
 import Finance from "./pages/Finance";
+import Wishlist from "./pages/Wishlist";
 
 export default function App() {
   return (

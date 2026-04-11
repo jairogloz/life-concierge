@@ -41,8 +41,8 @@ import (
 	financepostgres "github.com/jairogloz/life-concierge/internal/finance/adapters/postgres"
 	financeapp "github.com/jairogloz/life-concierge/internal/finance/application"
 
-	wishlhttp "github.com/jairogloz/life-concierge/internal/wishlist/adapters/http"
 	wishlcontext "github.com/jairogloz/life-concierge/internal/wishlist/adapters/context"
+	wishlhttp "github.com/jairogloz/life-concierge/internal/wishlist/adapters/http"
 	wishlopenai "github.com/jairogloz/life-concierge/internal/wishlist/adapters/openai"
 	wishlpostgres "github.com/jairogloz/life-concierge/internal/wishlist/adapters/postgres"
 	wishlapp "github.com/jairogloz/life-concierge/internal/wishlist/application"
