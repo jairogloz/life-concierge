@@ -10,17 +10,23 @@ import (
 
 	"github.com/jairogloz/life-concierge/internal/finance/domain"
 	"github.com/jairogloz/life-concierge/internal/finance/ports"
+	timelinedomain "github.com/jairogloz/life-concierge/internal/timeline/domain"
+	timelineports "github.com/jairogloz/life-concierge/internal/timeline/ports"
 )
 
 // FinanceService implements ports.FinanceService.
 type FinanceService struct {
-	repo ports.FinanceRepository
+	repo     ports.FinanceRepository
+	timeline timelineports.TimelineService
 }
 
 // NewFinanceService creates a new FinanceService.
 func NewFinanceService(repo ports.FinanceRepository) *FinanceService {
 	return &FinanceService{repo: repo}
 }
+
+// SetTimeline wires the timeline service for event emission.
+func (s *FinanceService) SetTimeline(tl timelineports.TimelineService) { s.timeline = tl }
 
 // ── Accounts ─────────────────────────────────────────────────────────────────
 
@@ -112,6 +118,18 @@ func (s *FinanceService) CreateTransaction(ctx context.Context, params ports.Cre
 	}
 	if err := s.repo.UpdateAccountBalance(ctx, tx.AccountID, delta); err != nil {
 		return nil, fmt.Errorf("update account balance: %w", err)
+	}
+
+	if tx.Type == domain.TransactionTypeExpense && s.timeline != nil {
+		go func() {
+			_, _ = s.timeline.RecordEvent(context.Background(), timelineports.RecordEventParams{
+				UserID:    tx.UserID,
+				EventType: timelinedomain.EventExpenseLogged,
+				Domain:    "finance",
+				EntityID:  &tx.ID,
+				Payload:   map[string]any{"amount": tx.Amount, "category": tx.Category, "description": tx.Description},
+			})
+		}()
 	}
 
 	return tx, nil

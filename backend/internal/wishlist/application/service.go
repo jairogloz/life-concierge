@@ -8,16 +8,22 @@ import (
 	"github.com/google/uuid"
 	"github.com/jairogloz/life-concierge/internal/wishlist/domain"
 	"github.com/jairogloz/life-concierge/internal/wishlist/ports"
+	timelinedomain "github.com/jairogloz/life-concierge/internal/timeline/domain"
+	timelineports "github.com/jairogloz/life-concierge/internal/timeline/ports"
 )
 
 // WishlistService implements ports.WishlistService.
 type WishlistService struct {
-	repo    ports.WishlistRepository
-	agent   ports.WishlistAgent
-	roles   ports.RoleReader
-	goals   ports.GoalReader
-	finance ports.FinanceSummaryReader
+	repo     ports.WishlistRepository
+	agent    ports.WishlistAgent
+	roles    ports.RoleReader
+	goals    ports.GoalReader
+	finance  ports.FinanceSummaryReader
+	timeline timelineports.TimelineService
 }
+
+// SetTimeline wires the timeline service for event emission.
+func (s *WishlistService) SetTimeline(tl timelineports.TimelineService) { s.timeline = tl }
 
 // NewWishlistService creates a new WishlistService.
 func NewWishlistService(
@@ -123,6 +129,17 @@ func (s *WishlistService) EvaluateItem(ctx context.Context, userID, itemID strin
 
 	if err := s.repo.UpdateVerdict(ctx, item); err != nil {
 		return nil, err
+	}
+	if s.timeline != nil {
+		go func() {
+			_, _ = s.timeline.RecordEvent(context.Background(), timelineports.RecordEventParams{
+				UserID:    userID,
+				EventType: timelinedomain.EventWishlistEval,
+				Domain:    "wishlist",
+				EntityID:  &item.ID,
+				Payload:   map[string]any{"title": item.Title, "verdict": verdict, "price": item.Price},
+			})
+		}()
 	}
 	return item, nil
 }

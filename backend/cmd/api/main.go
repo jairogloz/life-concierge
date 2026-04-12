@@ -136,6 +136,9 @@ func main() {
 	// Timeline
 	timelineRepo := timelinepostgres.NewTimelineRepository(db)
 	timelineService := timelineapp.NewTimelineService(timelineRepo)
+	tasksService.SetTimeline(timelineService)
+	financeService.SetTimeline(timelineService)
+	wishlService.SetTimeline(timelineService)
 
 	// Daily Brief
 	briefTimeline := briefcontext.NewTimelineReader(timelineRepo)

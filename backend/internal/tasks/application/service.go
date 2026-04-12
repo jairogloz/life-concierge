@@ -9,12 +9,18 @@ import (
 
 	"github.com/jairogloz/life-concierge/internal/tasks/domain"
 	"github.com/jairogloz/life-concierge/internal/tasks/ports"
+	timelinedomain "github.com/jairogloz/life-concierge/internal/timeline/domain"
+	timelineports "github.com/jairogloz/life-concierge/internal/timeline/ports"
 )
 
 // TaskService implements ports.TaskService.
 type TaskService struct {
-	repo ports.TaskRepository
+	repo     ports.TaskRepository
+	timeline timelineports.TimelineService
 }
+
+// SetTimeline wires the timeline service for event emission.
+func (s *TaskService) SetTimeline(tl timelineports.TimelineService) { s.timeline = tl }
 
 // NewTaskService creates a new TaskService.
 func NewTaskService(repo ports.TaskRepository) *TaskService {
@@ -133,5 +139,20 @@ func (s *TaskService) DeleteTask(ctx context.Context, userID, id string) error {
 
 func (s *TaskService) CompleteTask(ctx context.Context, userID, id string) (*domain.Task, error) {
 	status := "done"
-	return s.UpdateTask(ctx, userID, id, ports.UpdateTaskParams{Status: &status})
+	task, err := s.UpdateTask(ctx, userID, id, ports.UpdateTaskParams{Status: &status})
+	if err != nil {
+		return nil, err
+	}
+	if s.timeline != nil {
+		go func() {
+			_, _ = s.timeline.RecordEvent(context.Background(), timelineports.RecordEventParams{
+				UserID:    userID,
+				EventType: timelinedomain.EventTaskCompleted,
+				Domain:    "tasks",
+				EntityID:  &task.ID,
+				Payload:   map[string]any{"title": task.Title},
+			})
+		}()
+	}
+	return task, nil
 }
