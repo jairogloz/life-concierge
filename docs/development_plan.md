@@ -603,12 +603,12 @@ execution_priority_score =
 
 _Goal: Make the Today view actionable with filters and a cleaner layout._
 
-- ⬜ Task filter bar: **All tasks** | **Per role** (dropdown) | **Per tag** (multi-select)
-- ⬜ Filter persists in URL query params for shareability
-- ⬜ Separate "scheduled for today" section from "anytime / backlog" section
-- ⬜ Daily tasks show today's completion dot (done / not-done)
-- ⬜ Mobile Today screen: same filter controls via bottom sheet
-- ⬜ DailyBriefCard: collapse / expand state persisted in `localStorage`
+- ✅ Task filter bar: **All tasks** | **Per role** (dropdown) | **Per tag** (multi-select)
+- ✅ Filter persists in URL query params for shareability
+- ✅ Separate "scheduled for today" section from "anytime / backlog" section
+- ✅ Daily tasks show today's completion dot (done / not-done)
+- ✅ Mobile Today screen: same filter controls via bottom sheet
+- ✅ DailyBriefCard: collapse / expand state persisted in `localStorage`
 
 ### ✅ Testable milestone: Filter Today view by "Engineering" role, see only engineering tasks ranked
 
@@ -754,7 +754,7 @@ _Goal: Log workouts and body metrics; framework for future wearable integrations
 | 11    | Timeline + daily strategy agent         | ✅     |
 | 12    | Task Model v2 (impact, effort, types)   | ✅     |
 | 13    | Execution Priority + Life Balance Score | ✅     |
-| 14    | Today Dashboard v2 + Task Filtering     | ⬜     |
+| 14    | Today Dashboard v2 + Task Filtering     | ✅     |
 | 15    | Calendar View                           | ⬜     |
 | 16    | Wishlist v2 + Currency Enhancements     | ⬜     |
 | 17    | Gamification                            | ⬜     |
