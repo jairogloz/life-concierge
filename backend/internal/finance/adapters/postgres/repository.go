@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -204,22 +206,25 @@ func (r *FinanceRepository) CreateTransfer(ctx context.Context, tr *domain.Trans
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 func (r *FinanceRepository) GetBalanceSum(ctx context.Context, userID string) (float64, error) {
+	rate := getUSDToMXNRate()
 	var sum float64
 	err := r.db.QueryRow(ctx,
-		`SELECT COALESCE(SUM(balance), 0) FROM accounts WHERE user_id=$1`,
-		userID,
+		`SELECT COALESCE(SUM(CASE WHEN currency='USD' THEN balance * $2 ELSE balance END), 0)
+		   FROM accounts WHERE user_id=$1`,
+		userID, rate,
 	).Scan(&sum)
 	return sum, err
 }
 
 func (r *FinanceRepository) GetMonthlyTotals(ctx context.Context, userID string) (income, expenses float64, err error) {
+	rate := getUSDToMXNRate()
 	rows, err := r.db.Query(ctx,
-		`SELECT type, COALESCE(SUM(amount), 0)
+		`SELECT type, COALESCE(SUM(CASE WHEN currency='USD' THEN amount * $2 ELSE amount END), 0)
 		   FROM transactions
 		  WHERE user_id=$1
 		    AND date >= date_trunc('month', NOW())
 		  GROUP BY type`,
-		userID,
+		userID, rate,
 	)
 	if err != nil {
 		return 0, 0, err
@@ -241,15 +246,16 @@ func (r *FinanceRepository) GetMonthlyTotals(ctx context.Context, userID string)
 }
 
 func (r *FinanceRepository) GetMonthlyByCategory(ctx context.Context, userID string) (map[string]float64, error) {
+	rate := getUSDToMXNRate()
 	rows, err := r.db.Query(ctx,
-		`SELECT category, COALESCE(SUM(amount), 0)
+		`SELECT category, COALESCE(SUM(CASE WHEN currency='USD' THEN amount * $2 ELSE amount END), 0)
 		   FROM transactions
 		  WHERE user_id=$1
 		    AND type='expense'
 		    AND date >= date_trunc('month', NOW())
 		  GROUP BY category
 		  ORDER BY SUM(amount) DESC`,
-		userID,
+		userID, rate,
 	)
 	if err != nil {
 		return nil, err
@@ -269,3 +275,15 @@ func (r *FinanceRepository) GetMonthlyByCategory(ctx context.Context, userID str
 
 // Ensure FinanceRepository satisfies the port interface at compile time.
 var _ ports.FinanceRepository = (*FinanceRepository)(nil)
+
+func getUSDToMXNRate() float64 {
+	v := os.Getenv("USD_TO_MXN_RATE")
+	if v == "" {
+		return 17.5
+	}
+	rate, err := strconv.ParseFloat(v, 64)
+	if err != nil || rate <= 0 {
+		return 17.5
+	}
+	return rate
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,15 +23,15 @@ func NewWishlistRepository(db *pgxpool.Pool) *WishlistRepository {
 	return &WishlistRepository{db: db}
 }
 
-const itemCols = `id, user_id, title, price, currency, role_id, goal_id, importance, roi_score, emotional_score, cooldown_days, verdict, verdict_reasoning, evaluated_at, created_at, updated_at`
+const itemCols = `id, user_id, title, price, currency, role_id, goal_id, impact, roi_score, emotional_score, cooldown_days, verdict, verdict_reasoning, evaluated_at, bought_at, created_at, updated_at`
 
 func scanItem(row interface{ Scan(...any) error }) (*domain.WishlistItem, error) {
 	item := &domain.WishlistItem{}
 	var verdictStr *string
 	err := row.Scan(
 		&item.ID, &item.UserID, &item.Title, &item.Price, &item.Currency,
-		&item.RoleID, &item.GoalID, &item.Importance, &item.ROIScore, &item.EmotionalScore,
-		&item.CooldownDays, &verdictStr, &item.VerdictReasoning, &item.EvaluatedAt,
+		&item.RoleID, &item.GoalID, &item.Impact, &item.ROIScore, &item.EmotionalScore,
+		&item.CooldownDays, &verdictStr, &item.VerdictReasoning, &item.EvaluatedAt, &item.BoughtAt,
 		&item.CreatedAt, &item.UpdatedAt,
 	)
 	if err != nil {
@@ -51,10 +52,10 @@ func (r *WishlistRepository) CreateItem(ctx context.Context, item *domain.Wishli
 		verdictStr = &s
 	}
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO wishlist_items (`+itemCols+`) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+		`INSERT INTO wishlist_items (`+itemCols+`) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
 		item.ID, item.UserID, item.Title, item.Price, item.Currency,
-		item.RoleID, item.GoalID, item.Importance, item.ROIScore, item.EmotionalScore,
-		item.CooldownDays, verdictStr, item.VerdictReasoning, item.EvaluatedAt,
+		item.RoleID, item.GoalID, item.Impact, item.ROIScore, item.EmotionalScore,
+		item.CooldownDays, verdictStr, item.VerdictReasoning, item.EvaluatedAt, item.BoughtAt,
 		item.CreatedAt, item.UpdatedAt,
 	)
 	if err != nil {
@@ -64,11 +65,15 @@ func (r *WishlistRepository) CreateItem(ctx context.Context, item *domain.Wishli
 }
 
 // ListItems returns all wishlist items for the user, newest first.
-func (r *WishlistRepository) ListItems(ctx context.Context, userID string) ([]*domain.WishlistItem, error) {
-	rows, err := r.db.Query(ctx,
-		`SELECT `+itemCols+` FROM wishlist_items WHERE user_id=$1 ORDER BY created_at DESC`,
-		userID,
-	)
+func (r *WishlistRepository) ListItems(ctx context.Context, userID string, includeBought bool) ([]*domain.WishlistItem, error) {
+	query := `SELECT ` + itemCols + ` FROM wishlist_items WHERE user_id=$1`
+	args := []any{userID}
+	if !includeBought {
+		query += ` AND bought_at IS NULL`
+	}
+	query += ` ORDER BY created_at DESC`
+
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("wishlist.List: %w", err)
 	}
@@ -82,6 +87,17 @@ func (r *WishlistRepository) ListItems(ctx context.Context, userID string) ([]*d
 		items = append(items, item)
 	}
 	return items, rows.Err()
+}
+
+func (r *WishlistRepository) MarkBought(ctx context.Context, userID, itemID string, boughtAt time.Time) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE wishlist_items SET bought_at=$1, updated_at=$2 WHERE id=$3 AND user_id=$4`,
+		boughtAt, boughtAt, itemID, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("wishlist.MarkBought: %w", err)
+	}
+	return nil
 }
 
 // GetItem returns a single wishlist item by ID, scoped to the user.

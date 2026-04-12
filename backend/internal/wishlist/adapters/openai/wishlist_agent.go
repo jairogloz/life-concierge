@@ -90,7 +90,7 @@ func buildEvalPrompt(evalCtx ports.EvalContext) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Item: %s\n", item.Title)
 	fmt.Fprintf(&sb, "Price: %.2f %s\n", item.Price, item.Currency)
-	fmt.Fprintf(&sb, "Importance (self-rated): %d/10\n", item.Importance)
+	fmt.Fprintf(&sb, "Impact (self-rated): %d/5\n", item.Impact)
 	fmt.Fprintf(&sb, "Total account balance: %.2f\n", evalCtx.TotalBalance)
 	if evalCtx.RoleName != "" {
 		fmt.Fprintf(&sb, "Associated life role: %s (weight: %.1f/10)\n", evalCtx.RoleName, evalCtx.RoleWeight)

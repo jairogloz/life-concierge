@@ -1,6 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { useApi } from "../lib/useApi";
-import type { WishlistItem, WishlistVerdict, Role, Goal } from "../types";
+import type {
+  WishlistItem,
+  WishlistVerdict,
+  Role,
+  Goal,
+  RankedWishlistItem,
+} from "../types";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -20,10 +26,10 @@ const VERDICT_CONFIG: Record<
 const EMPTY_FORM = {
   title: "",
   price: "",
-  currency: "USD",
+  currency: "MXN",
   role_id: "",
   goal_id: "",
-  importance: "5",
+  impact: "3",
   cooldown_days: "30",
 };
 
@@ -32,6 +38,7 @@ const EMPTY_FORM = {
 export default function Wishlist() {
   const api = useApi();
   const [items, setItems] = useState<WishlistItem[]>([]);
+  const [ranked, setRanked] = useState<RankedWishlistItem[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,12 +50,14 @@ export default function Wishlist() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [wRes, rRes, gRes] = await Promise.all([
+      const [wRes, rankedRes, rRes, gRes] = await Promise.all([
         api.get<{ data: WishlistItem[] }>("/wishlist"),
+        api.get<{ data: RankedWishlistItem[] }>("/wishlist/ranked"),
         api.get<{ data: Role[] }>("/roles"),
         api.get<{ data: Goal[] }>("/goals"),
       ]);
       setItems(wRes.data.data ?? []);
+      setRanked(rankedRes.data.data ?? []);
       setRoles(rRes.data.data ?? []);
       setGoals(gRes.data.data ?? []);
     } catch (err: any) {
@@ -77,7 +86,7 @@ export default function Wishlist() {
         currency: form.currency,
         role_id: form.role_id || null,
         goal_id: form.goal_id || null,
-        importance: parseInt(form.importance) || 5,
+        impact: parseInt(form.impact) || 3,
         cooldown_days: parseInt(form.cooldown_days) || 30,
       });
       setForm(EMPTY_FORM);
@@ -99,10 +108,20 @@ export default function Wishlist() {
         {},
       );
       setItems((prev) => prev.map((i) => (i.id === itemId ? res.data : i)));
+      await load();
     } catch (err: any) {
       alert(err?.response?.data?.error?.message ?? "Evaluation failed.");
     } finally {
       setEvaluatingId(null);
+    }
+  }
+
+  async function handleMarkBought(itemId: string) {
+    try {
+      await api.post(`/wishlist/${itemId}/mark-bought`, {});
+      await load();
+    } catch (err: any) {
+      alert(err?.response?.data?.error?.message ?? "Could not mark item bought.");
     }
   }
 
@@ -161,18 +180,14 @@ export default function Wishlist() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Currency
             </label>
-            <input
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
-              maxLength={3}
-              placeholder="USD"
+            <select
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={form.currency}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  currency: e.target.value.toUpperCase(),
-                }))
-              }
-            />
+              onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
+            >
+              <option value="MXN">MXN</option>
+              <option value="USD">USD</option>
+            </select>
           </div>
 
           <div>
@@ -217,16 +232,16 @@ export default function Wishlist() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Importance (1–10)
+              Impact (1–5)
             </label>
             <input
               type="number"
               min="1"
-              max="10"
+              max="5"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={form.importance}
+              value={form.impact}
               onChange={(e) =>
-                setForm((f) => ({ ...f, importance: e.target.value }))
+                setForm((f) => ({ ...f, impact: e.target.value }))
               }
             />
           </div>
@@ -262,6 +277,30 @@ export default function Wishlist() {
         </form>
       </div>
 
+      {/* ── Ranked list ───────────────────────────────────────────────── */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Ranked Buy Order</h2>
+        {ranked.length === 0 ? (
+          <p className="text-sm text-gray-400">No active items to rank.</p>
+        ) : (
+          <ol className="space-y-3">
+            {ranked.map((row) => (
+              <li key={row.item.id} className="rounded-lg border border-gray-200 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-gray-900 truncate">
+                    #{row.rank} {row.item.title}
+                  </p>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    score {row.item_score.toFixed(4)}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{row.explanation}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+
       {/* ── Item list ─────────────────────────────────────────────────── */}
       {items.length === 0 ? (
         <p className="text-center text-gray-400 text-sm">
@@ -287,7 +326,7 @@ export default function Wishlist() {
                     </p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-xs text-gray-500">
-                        Importance: {item.importance}/10
+                        Impact: {item.impact}/5
                       </span>
                       {item.roi_score != null && (
                         <span className="text-xs text-gray-500">
@@ -316,6 +355,12 @@ export default function Wishlist() {
                       className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition disabled:opacity-50"
                     >
                       {isEvaluating ? "Thinking…" : "🤖 Ask AI"}
+                    </button>
+                    <button
+                      onClick={() => handleMarkBought(item.id)}
+                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium transition"
+                    >
+                      Mark bought
                     </button>
                   </div>
                 </div>

@@ -35,7 +35,7 @@ func (s *FinanceService) CreateAccount(ctx context.Context, params ports.CreateA
 		params.Type = domain.AccountTypeChecking
 	}
 	if params.Currency == "" {
-		params.Currency = "USD"
+		params.Currency = "MXN"
 	}
 	now := time.Now().UTC()
 	acc := &domain.Account{
@@ -87,6 +87,9 @@ func (s *FinanceService) CreateTransaction(ctx context.Context, params ports.Cre
 		Date:        txDate,
 		CreatedAt:   now,
 		UpdatedAt:   now,
+	}
+	if tx.Currency == "" {
+		tx.Currency = "MXN"
 	}
 
 	for _, sp := range params.Splits {
@@ -170,6 +173,9 @@ func (s *FinanceService) CreateTransfer(ctx context.Context, params ports.Create
 		Date:          txDate,
 		CreatedAt:     now,
 	}
+	if tr.Currency == "" {
+		tr.Currency = "MXN"
+	}
 
 	if err := tr.Validate(); err != nil {
 		return nil, err
@@ -223,6 +229,7 @@ func (s *FinanceService) GetSummary(ctx context.Context, userID string) (*domain
 		MonthIncome:   income,
 		MonthExpenses: expenses,
 		ByCategory:    byCategory,
+		Currency:      "MXN",
 	}, nil
 }
 

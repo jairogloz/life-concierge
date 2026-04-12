@@ -24,13 +24,14 @@ type WishlistItem struct {
 	Currency         string     `json:"currency"`
 	RoleID           *string    `json:"role_id,omitempty"`
 	GoalID           *string    `json:"goal_id,omitempty"`
-	Importance       int        `json:"importance"`
+	Impact           int        `json:"impact"`
 	ROIScore         *float64   `json:"roi_score,omitempty"`
 	EmotionalScore   *float64   `json:"emotional_score,omitempty"`
 	CooldownDays     int        `json:"cooldown_days"`
 	Verdict          *Verdict   `json:"verdict,omitempty"`
 	VerdictReasoning *string    `json:"verdict_reasoning,omitempty"`
 	EvaluatedAt      *time.Time `json:"evaluated_at,omitempty"`
+	BoughtAt         *time.Time `json:"bought_at,omitempty"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
@@ -46,8 +47,8 @@ func (i *WishlistItem) Validate() error {
 	if i.Price < 0 {
 		return fmt.Errorf("validation: price must be >= 0")
 	}
-	if i.Importance < 1 || i.Importance > 10 {
-		return fmt.Errorf("validation: importance must be between 1 and 10")
+	if i.Impact < 1 || i.Impact > 5 {
+		return fmt.Errorf("validation: impact must be between 1 and 5")
 	}
 	return nil
 }

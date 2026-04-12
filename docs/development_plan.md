@@ -637,16 +637,16 @@ _Goal: Mark items as bought, order items by heuristic priority, align currencies
 
 ### Wishlist enhancements
 
-- ⬜ `backend/migrations/000011_wishlist_v2.up.sql`:
+- ✅ `backend/migrations/000011_wishlist_v2.up.sql`:
   - Add `bought_at TIMESTAMPTZ` (nullable — set when marked bought)
   - Rename `importance` → `impact` `SMALLINT DEFAULT 3` (1–5, matching task scale)
   - Change `currency` column default to `'MXN'`
-- ⬜ `POST /api/v1/wishlist/:id/mark-bought` — sets `bought_at = now()`, item hidden from active list
-- ⬜ `GET  /api/v1/wishlist` — exclude bought items by default; accept `?include_bought=true`
+- ✅ `POST /api/v1/wishlist/:id/mark-bought` — sets `bought_at = now()`, item hidden from active list
+- ✅ `GET  /api/v1/wishlist` — exclude bought items by default; accept `?include_bought=true`
 
 #### Heuristic buy-order ranking
 
-- ⬜ `backend/internal/wishlist/domain/ranker.go` — pure function, no I/O:
+- ✅ `backend/internal/wishlist/domain/ranker.go` — pure function, no I/O:
 
   ```
   item_roi    = impact / normalized_price   (price normalized to MXN using fixed rate)
@@ -656,14 +656,14 @@ _Goal: Mark items as bought, order items by heuristic priority, align currencies
   - Items without goal/role: use weight = 1.0
   - Price normalization: simple configurable USD→MXN rate (env var `USD_TO_MXN_RATE`, default 17.5)
 
-- ⬜ `GET /api/v1/wishlist/ranked` — returns items ordered by `item_score` with `rank` + `explanation`
-- ⬜ Frontend: Wishlist page shows ranked order with score badge; "Mark as bought" button per item → item slides out of list
+- ✅ `GET /api/v1/wishlist/ranked` — returns items ordered by `item_score` with `rank` + `explanation`
+- ✅ Frontend: Wishlist page shows ranked order with score badge; "Mark as bought" button per item → item slides out of list
 
 ### Currency dropdown (app-wide)
 
-- ⬜ Frontend: all currency inputs (finance transactions, wishlist items) use a dropdown: **MXN** (default) | **USD**
-- ⬜ Backend `CreateTransaction` and `CreateItem` accept `currency` as before; frontend ensures it's always populated from the dropdown
-- ⬜ Finance summary `GET /api/v1/finance/summary`: display totals in MXN; USD balances converted using same rate for display only
+- ✅ Frontend: all currency inputs (finance transactions, wishlist items) use a dropdown: **MXN** (default) | **USD**
+- ✅ Backend `CreateTransaction` and `CreateItem` accept `currency` as before; frontend ensures it's always populated from the dropdown
+- ✅ Finance summary `GET /api/v1/finance/summary`: display totals in MXN; USD balances converted using same rate for display only
 
 ### ✅ Testable milestone: Add 5 wishlist items at different prices and impact levels; ranked order reflects ROI; mark cheapest bought → disappears from list
 
@@ -758,6 +758,6 @@ _Goal: Log workouts and body metrics; framework for future wearable integrations
 | 13    | Execution Priority + Life Balance Score | ✅     |
 | 14    | Today Dashboard v2 + Task Filtering     | ✅     |
 | 15    | Calendar View                           | ✅     |
-| 16    | Wishlist v2 + Currency Enhancements     | ⬜     |
+| 16    | Wishlist v2 + Currency Enhancements     | ✅     |
 | 17    | Gamification                            | ⬜     |
 | 18    | Health domain (deferred)                | ⬜     |

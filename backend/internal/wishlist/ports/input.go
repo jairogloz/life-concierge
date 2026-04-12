@@ -14,13 +14,15 @@ type CreateItemParams struct {
 	Currency     string
 	RoleID       *string
 	GoalID       *string
-	Importance   int
+	Impact       int
 	CooldownDays int
 }
 
 // WishlistService defines the input port for the wishlist domain.
 type WishlistService interface {
 	CreateItem(ctx context.Context, params CreateItemParams) (*domain.WishlistItem, error)
-	ListItems(ctx context.Context, userID string) ([]*domain.WishlistItem, error)
+	ListItems(ctx context.Context, userID string, includeBought bool) ([]*domain.WishlistItem, error)
+	MarkBought(ctx context.Context, userID, itemID string) (*domain.WishlistItem, error)
+	RankItems(ctx context.Context, userID string) ([]*domain.RankedItem, error)
 	EvaluateItem(ctx context.Context, userID, itemID string) (*domain.WishlistItem, error)
 }

@@ -5,7 +5,7 @@ import type { Account, Transaction, FinanceSummary, AccountType, TransactionType
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-const fmt = (n: number, currency = 'USD') =>
+const fmt = (n: number, currency = 'MXN') =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -14,9 +14,9 @@ const today = () => new Date().toISOString().split('T')[0];
 
 interface SplitRow { category: string; amount: string; percentage: string; }
 
-const EMPTY_ACCOUNT = { name: '', type: 'checking' as AccountType, currency: 'USD', balance: '' };
+const EMPTY_ACCOUNT = { name: '', type: 'checking' as AccountType, currency: 'MXN', balance: '' };
 const EMPTY_TX = {
-  account_id: '', type: 'expense' as TransactionType, amount: '', currency: 'USD',
+  account_id: '', type: 'expense' as TransactionType, amount: '', currency: 'MXN',
   category: '', description: '', date: today(), splits: [] as SplitRow[],
 };
 
@@ -33,7 +33,7 @@ export default function Finance() {
   // forms
   const [accForm, setAccForm] = useState(EMPTY_ACCOUNT);
   const [txForm, setTxForm] = useState(EMPTY_TX);
-  const [trForm, setTrForm] = useState({ from_account_id: '', to_account_id: '', amount: '', currency: 'USD', description: '', date: today() });
+  const [trForm, setTrForm] = useState({ from_account_id: '', to_account_id: '', amount: '', currency: 'MXN', description: '', date: today() });
 
   const [saving, setSaving] = useState(false);
   const [splitEnabled, setSplitEnabled] = useState(false);
@@ -132,9 +132,9 @@ export default function Finance() {
       {summary && (
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: 'Total Balance', value: fmt(summary.total_balance), color: 'indigo' },
-            { label: 'Month Income', value: fmt(summary.month_income), color: 'green' },
-            { label: 'Month Expenses', value: fmt(summary.month_expenses), color: 'red' },
+            { label: 'Total Balance', value: fmt(summary.total_balance, summary.currency || 'MXN'), color: 'indigo' },
+            { label: 'Month Income', value: fmt(summary.month_income, summary.currency || 'MXN'), color: 'green' },
+            { label: 'Month Expenses', value: fmt(summary.month_expenses, summary.currency || 'MXN'), color: 'red' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
               <p className="text-xs text-gray-500 mb-1">{label}</p>
@@ -171,8 +171,11 @@ export default function Finance() {
                       <option key={t} value={t}>{t.replace('_', ' ')}</option>
                     ))}
                   </select>
-                  <input className={inputCls} placeholder="Currency (USD)" maxLength={3}
-                    value={accForm.currency} onChange={e => setAccForm(p => ({ ...p, currency: e.target.value.toUpperCase() }))} />
+                  <select className={inputCls} value={accForm.currency}
+                    onChange={e => setAccForm(p => ({ ...p, currency: e.target.value }))}>
+                    <option value="MXN">MXN</option>
+                    <option value="USD">USD</option>
+                  </select>
                   <input className={inputCls} type="number" placeholder="Opening balance (0)"
                     value={accForm.balance} onChange={e => setAccForm(p => ({ ...p, balance: e.target.value }))} />
                 </div>
@@ -218,6 +221,11 @@ export default function Finance() {
                   </select>
                   <input className={inputCls} type="number" min="0.01" step="0.01" placeholder="Amount"
                     value={txForm.amount} onChange={e => setTxForm(p => ({ ...p, amount: e.target.value }))} />
+                  <select className={inputCls} value={txForm.currency}
+                    onChange={e => setTxForm(p => ({ ...p, currency: e.target.value }))}>
+                    <option value="MXN">MXN</option>
+                    <option value="USD">USD</option>
+                  </select>
                   <input className={inputCls} placeholder="Category (e.g. Groceries)"
                     value={txForm.category} onChange={e => setTxForm(p => ({ ...p, category: e.target.value }))} />
                   <input className={inputCls} placeholder="Description (optional)"
@@ -300,6 +308,11 @@ export default function Finance() {
                 </select>
                 <input className={inputCls} type="number" min="0.01" step="0.01" placeholder="Amount"
                   value={trForm.amount} onChange={e => setTrForm(p => ({ ...p, amount: e.target.value }))} />
+                <select className={inputCls} value={trForm.currency}
+                  onChange={e => setTrForm(p => ({ ...p, currency: e.target.value }))}>
+                  <option value="MXN">MXN</option>
+                  <option value="USD">USD</option>
+                </select>
                 <input className={inputCls} type="date" value={trForm.date}
                   onChange={e => setTrForm(p => ({ ...p, date: e.target.value }))} />
                 <input className={`${inputCls} col-span-2`} placeholder="Description (optional)"
@@ -311,7 +324,7 @@ export default function Finance() {
                   onClick={createTransfer}>
                   {saving ? 'Transferring…' : 'Transfer'}
                 </button>
-                <button className={btnGhost} onClick={() => setTrForm({ from_account_id: '', to_account_id: '', amount: '', currency: 'USD', description: '', date: today() })}>
+                <button className={btnGhost} onClick={() => setTrForm({ from_account_id: '', to_account_id: '', amount: '', currency: 'MXN', description: '', date: today() })}>
                   Reset
                 </button>
               </div>

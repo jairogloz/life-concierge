@@ -26,6 +26,8 @@ func RegisterRoutes(router fiber.Router, svc ports.WishlistService) {
 	h := NewHandler(svc)
 	router.Post("/wishlist", h.CreateItem)
 	router.Get("/wishlist", h.ListItems)
+	router.Get("/wishlist/ranked", h.RankItems)
+	router.Post("/wishlist/:id/mark-bought", h.MarkBought)
 	router.Post("/wishlist/:id/evaluate", h.EvaluateItem)
 }
 
@@ -35,7 +37,7 @@ type createItemRequest struct {
 	Currency     string  `json:"currency"`
 	RoleID       *string `json:"role_id"`
 	GoalID       *string `json:"goal_id"`
-	Importance   int     `json:"importance"`
+	Impact       int     `json:"impact"`
 	CooldownDays int     `json:"cooldown_days"`
 }
 
@@ -54,7 +56,7 @@ func (h *Handler) CreateItem(c *fiber.Ctx) error {
 		Currency:     req.Currency,
 		RoleID:       req.RoleID,
 		GoalID:       req.GoalID,
-		Importance:   req.Importance,
+		Impact:       req.Impact,
 		CooldownDays: req.CooldownDays,
 	}
 
@@ -71,8 +73,9 @@ func (h *Handler) CreateItem(c *fiber.Ctx) error {
 // ListItems handles GET /wishlist.
 func (h *Handler) ListItems(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
+	includeBought := c.QueryBool("include_bought", false)
 
-	items, err := h.svc.ListItems(c.Context(), userID)
+	items, err := h.svc.ListItems(c.Context(), userID, includeBought)
 	if err != nil {
 		return response.InternalError(c)
 	}
@@ -80,6 +83,35 @@ func (h *Handler) ListItems(c *fiber.Ctx) error {
 		items = []*domain.WishlistItem{}
 	}
 	return c.JSON(fiber.Map{"data": items})
+}
+
+// RankItems handles GET /wishlist/ranked.
+func (h *Handler) RankItems(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+
+	ranked, err := h.svc.RankItems(c.Context(), userID)
+	if err != nil {
+		return response.InternalError(c)
+	}
+	if ranked == nil {
+		ranked = []*domain.RankedItem{}
+	}
+	return c.JSON(fiber.Map{"data": ranked})
+}
+
+// MarkBought handles POST /wishlist/:id/mark-bought.
+func (h *Handler) MarkBought(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+	itemID := c.Params("id")
+
+	item, err := h.svc.MarkBought(c.Context(), userID, itemID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return response.NotFound(c, err.Error())
+		}
+		return response.InternalError(c)
+	}
+	return c.JSON(item)
 }
 
 // EvaluateItem handles POST /wishlist/:id/evaluate.

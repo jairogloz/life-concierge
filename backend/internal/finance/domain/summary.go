@@ -6,4 +6,5 @@ type FinanceSummary struct {
 	MonthIncome   float64            `json:"month_income"`
 	MonthExpenses float64            `json:"month_expenses"`
 	ByCategory    map[string]float64 `json:"by_category"`
+	Currency      string             `json:"currency"`
 }

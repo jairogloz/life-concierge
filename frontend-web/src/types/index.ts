@@ -156,6 +156,7 @@ export interface FinanceSummary {
   month_income: number;
   month_expenses: number;
   by_category: Record<string, number>;
+  currency: string;
 }
 
 // ── Wishlist ─────────────────────────────────────────────────────────────────
@@ -170,15 +171,24 @@ export interface WishlistItem {
   currency: string;
   role_id: string | null;
   goal_id: string | null;
-  importance: number;
+  impact: number;
   roi_score: number | null;
   emotional_score: number | null;
   cooldown_days: number;
   verdict: WishlistVerdict | null;
   verdict_reasoning: string | null;
   evaluated_at: string | null;
+  bought_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface RankedWishlistItem {
+  item: WishlistItem;
+  rank: number;
+  item_roi: number;
+  item_score: number;
+  explanation: string;
 }
 
 // ── Timeline ─────────────────────────────────────────────────────────────────

@@ -52,6 +52,15 @@ func (r *GoalsReader) GetGoal(ctx context.Context, userID, goalID string) (strin
 	return goal.Title, 0, nil
 }
 
+// GetGoalWeight returns the goal weight for ranking computations.
+func (r *GoalsReader) GetGoalWeight(ctx context.Context, userID, goalID string) (float64, error) {
+	goal, err := r.repo.GetByID(ctx, userID, goalID)
+	if err != nil {
+		return 0, fmt.Errorf("goals reader: %w", err)
+	}
+	return goal.Weight, nil
+}
+
 // ── Finance ───────────────────────────────────────────────────────────────
 
 // FinanceReader adapts the finance repository to the wishlist FinanceSummaryReader port.

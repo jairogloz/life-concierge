@@ -3,6 +3,9 @@ package application
 import (
 	"context"
 	"fmt"
+	"os"
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -45,9 +48,9 @@ func NewWishlistService(
 // CreateItem creates a new wishlist item for the user.
 func (s *WishlistService) CreateItem(ctx context.Context, params ports.CreateItemParams) (*domain.WishlistItem, error) {
 	now := time.Now().UTC()
-	imp := params.Importance
-	if imp == 0 {
-		imp = 5
+	impact := params.Impact
+	if impact == 0 {
+		impact = 3
 	}
 	cooldown := params.CooldownDays
 	if cooldown == 0 {
@@ -55,7 +58,7 @@ func (s *WishlistService) CreateItem(ctx context.Context, params ports.CreateIte
 	}
 	currency := params.Currency
 	if currency == "" {
-		currency = "USD"
+		currency = "MXN"
 	}
 	item := &domain.WishlistItem{
 		ID:           uuid.NewString(),
@@ -65,7 +68,7 @@ func (s *WishlistService) CreateItem(ctx context.Context, params ports.CreateIte
 		Currency:     currency,
 		RoleID:       params.RoleID,
 		GoalID:       params.GoalID,
-		Importance:   imp,
+		Impact:       impact,
 		CooldownDays: cooldown,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -80,8 +83,62 @@ func (s *WishlistService) CreateItem(ctx context.Context, params ports.CreateIte
 }
 
 // ListItems returns all wishlist items for the user.
-func (s *WishlistService) ListItems(ctx context.Context, userID string) ([]*domain.WishlistItem, error) {
-	return s.repo.ListItems(ctx, userID)
+func (s *WishlistService) ListItems(ctx context.Context, userID string, includeBought bool) ([]*domain.WishlistItem, error) {
+	return s.repo.ListItems(ctx, userID, includeBought)
+}
+
+func (s *WishlistService) MarkBought(ctx context.Context, userID, itemID string) (*domain.WishlistItem, error) {
+	item, err := s.repo.GetItem(ctx, userID, itemID)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	if err := s.repo.MarkBought(ctx, userID, itemID, now); err != nil {
+		return nil, err
+	}
+	item.BoughtAt = &now
+	item.UpdatedAt = now
+	return item, nil
+}
+
+func (s *WishlistService) RankItems(ctx context.Context, userID string) ([]*domain.RankedItem, error) {
+	items, err := s.repo.ListItems(ctx, userID, false)
+	if err != nil {
+		return nil, err
+	}
+	rate := getUSDToMXNRate()
+
+	ranked := make([]*domain.RankedItem, 0, len(items))
+	for _, item := range items {
+		roleWeight := 1.0
+		goalWeight := 1.0
+
+		if item.RoleID != nil {
+			if _, rw, rerr := s.roles.GetRole(ctx, userID, *item.RoleID); rerr == nil && rw > 0 {
+				roleWeight = rw
+			}
+		}
+		if item.GoalID != nil {
+			if gw, gerr := s.goals.GetGoalWeight(ctx, userID, *item.GoalID); gerr == nil && gw > 0 {
+				goalWeight = gw
+			}
+		}
+
+		roi, score, explanation := domain.ComputeItemScore(item, roleWeight, goalWeight, rate)
+		ranked = append(ranked, &domain.RankedItem{
+			Item:        item,
+			ItemROI:     roi,
+			ItemScore:   score,
+			Explanation: explanation,
+		})
+	}
+
+	sort.Slice(ranked, func(i, j int) bool { return ranked[i].ItemScore > ranked[j].ItemScore })
+	for i := range ranked {
+		ranked[i].Rank = i + 1
+	}
+
+	return ranked, nil
 }
 
 // EvaluateItem runs the AI agent on a wishlist item and stores the verdict.
@@ -146,3 +203,15 @@ func (s *WishlistService) EvaluateItem(ctx context.Context, userID, itemID strin
 
 // Compile-time interface check.
 var _ ports.WishlistService = (*WishlistService)(nil)
+
+func getUSDToMXNRate() float64 {
+	v := os.Getenv("USD_TO_MXN_RATE")
+	if v == "" {
+		return 17.5
+	}
+	rate, err := strconv.ParseFloat(v, 64)
+	if err != nil || rate <= 0 {
+		return 17.5
+	}
+	return rate
+}
