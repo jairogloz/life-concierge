@@ -23,11 +23,11 @@ import (
 // ── Mock service ──────────────────────────────────────────────────────────────
 
 type mockInboxSvc struct {
-	processFn    func(ctx context.Context, userID, rawText string) (*domain.AISuggestion, error)
-	getFn        func(ctx context.Context, userID, id string) (*domain.AISuggestion, error)
-	listFn       func(ctx context.Context, userID string) ([]*domain.AISuggestion, error)
-	acceptFn     func(ctx context.Context, userID, id string, overrides *domain.TaskSuggestion) (string, error)
-	rejectFn     func(ctx context.Context, userID, id string) error
+	processFn func(ctx context.Context, userID, rawText string) (*domain.AISuggestion, error)
+	getFn     func(ctx context.Context, userID, id string) (*domain.AISuggestion, error)
+	listFn    func(ctx context.Context, userID string) ([]*domain.AISuggestion, error)
+	acceptFn  func(ctx context.Context, userID, id string, overrides *domain.TaskSuggestion) (string, error)
+	rejectFn  func(ctx context.Context, userID, id string) error
 }
 
 func (m *mockInboxSvc) ProcessRawText(ctx context.Context, userID, rawText string) (*domain.AISuggestion, error) {

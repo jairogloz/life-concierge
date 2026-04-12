@@ -194,7 +194,7 @@ export default function Today() {
                     score {score.toFixed(1)}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 capitalize">
-                    {task.task_type === 'daily' ? '🔁 daily' : '✅ one-time'}
+                    {task.task_type === "daily" ? "🔁 daily" : "✅ one-time"}
                   </span>
                   {task.deadline && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">
