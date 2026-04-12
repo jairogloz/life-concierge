@@ -618,14 +618,14 @@ _Goal: Make the Today view actionable with filters and a cleaner layout._
 
 _Goal: Visualize tasks across time — essential for scheduling work and spotting deadline clusters._
 
-- ⬜ **Month view**: grid of days; each day shows coloured task dots (by role colour); click day → day detail sheet
-- ⬜ **Week view**: column per day, time-blocked cards for tasks with `scheduled_date` today; unscheduled tasks in sidebar
-- ⬜ **Day view**: time-ordered list of scheduled tasks + unscheduled backlog
-- ⬜ Drag-and-drop to reschedule tasks (web only; mobile uses tap → date picker)
-- ⬜ Due date indicators (soft deadline = yellow, hard deadline = red)
-- ⬜ Route: `/calendar` (web), Calendar tab (mobile)
-- ⬜ Backend: no new endpoints needed — reuses `GET /api/v1/tasks` with date range filters added as query params (`scheduled_from`, `scheduled_to`, `due_from`, `due_to`)
-- ⬜ Add date range filter query params to `GET /api/v1/tasks`
+- ✅ **Month view**: grid of days; each day shows coloured task dots (by role colour); click day → day detail sheet
+- ✅ **Week view**: column per day, time-blocked cards for tasks with `scheduled_date` today; unscheduled tasks in sidebar
+- ✅ **Day view**: time-ordered list of scheduled tasks + unscheduled backlog
+- ✅ Drag-and-drop to reschedule tasks (web only; mobile uses tap → date picker)
+- ✅ Due date indicators (soft deadline = yellow, hard deadline = red)
+- ✅ Route: `/calendar` (web), Calendar tab (mobile)
+- ✅ Backend: no new endpoints needed — reuses `GET /api/v1/tasks` with date range filters added as query params (`scheduled_from`, `scheduled_to`, `due_from`, `due_to`)
+- ✅ Add date range filter query params to `GET /api/v1/tasks`
 
 ### ✅ Testable milestone: Drag a task from Monday to Wednesday, verify `scheduled_date` updates
 
@@ -757,7 +757,7 @@ _Goal: Log workouts and body metrics; framework for future wearable integrations
 | 12    | Task Model v2 (impact, effort, types)   | ✅     |
 | 13    | Execution Priority + Life Balance Score | ✅     |
 | 14    | Today Dashboard v2 + Task Filtering     | ✅     |
-| 15    | Calendar View                           | ⬜     |
+| 15    | Calendar View                           | ✅     |
 | 16    | Wishlist v2 + Currency Enhancements     | ⬜     |
 | 17    | Gamification                            | ⬜     |
 | 18    | Health domain (deferred)                | ⬜     |

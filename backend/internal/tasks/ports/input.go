@@ -56,6 +56,10 @@ type TaskFilter struct {
 	Status        string
 	Context       string
 	ScheduledDate string // YYYY-MM-DD, filters by scheduled_date
+	ScheduledFrom string // YYYY-MM-DD, filters scheduled_date >= value
+	ScheduledTo   string // YYYY-MM-DD, filters scheduled_date <= value
+	DueFrom       string // YYYY-MM-DD, filters deadline::date >= value
+	DueTo         string // YYYY-MM-DD, filters deadline::date <= value
 }
 
 // TaskService defines the input port for the tasks domain.

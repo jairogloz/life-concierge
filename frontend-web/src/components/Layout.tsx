@@ -7,6 +7,7 @@ const nav = [
   { to: "/roles", label: "🎭 Roles" },
   { to: "/goals", label: "🎯 Goals" },
   { to: "/tasks", label: "✅ Tasks" },
+  { to: "/calendar", label: "🗓️ Calendar" },
   { to: "/inbox", label: "✨ Capture" },
   { to: "/finance", label: "💰 Finance" },
   { to: "/wishlist", label: "🛒 Wishlist" },

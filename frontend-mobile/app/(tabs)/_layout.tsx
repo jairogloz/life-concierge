@@ -30,6 +30,12 @@ const TABS: TabConfig[] = [
     inactiveIcon: "people-outline",
   },
   {
+    name: "calendar",
+    title: "Calendar",
+    activeIcon: "calendar",
+    inactiveIcon: "calendar-outline",
+  },
+  {
     name: "finance",
     title: "Finance",
     activeIcon: "wallet",

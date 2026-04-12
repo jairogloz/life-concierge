@@ -118,6 +118,10 @@ func (h *Handler) ListTasks(c *fiber.Ctx) error {
 		Status:        c.Query("status"),
 		Context:       c.Query("context"),
 		ScheduledDate: c.Query("scheduled_date"),
+		ScheduledFrom: c.Query("scheduled_from"),
+		ScheduledTo:   c.Query("scheduled_to"),
+		DueFrom:       c.Query("due_from"),
+		DueTo:         c.Query("due_to"),
 	}
 	tasks, err := h.svc.ListTasks(c.Context(), userID, filter)
 	if err != nil {

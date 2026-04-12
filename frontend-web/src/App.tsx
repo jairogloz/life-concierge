@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Roles from "./pages/Roles";
 import Goals from "./pages/Goals";
 import Tasks from "./pages/Tasks";
+import Calendar from "./pages/Calendar";
 import Inbox from "./pages/Inbox";
 import Finance from "./pages/Finance";
 import Wishlist from "./pages/Wishlist";
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="roles" element={<Roles />} />
           <Route path="goals" element={<Goals />} />
           <Route path="tasks" element={<Tasks />} />
+          <Route path="calendar" element={<Calendar />} />
           <Route path="inbox" element={<Inbox />} />
           <Route path="finance" element={<Finance />} />
           <Route path="wishlist" element={<Wishlist />} />

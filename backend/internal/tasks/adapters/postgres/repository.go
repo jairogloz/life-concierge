@@ -93,6 +93,26 @@ func (r *TaskRepository) List(ctx context.Context, userID string, filter ports.T
 	if filter.ScheduledDate != "" {
 		query += fmt.Sprintf(` AND scheduled_date=$%d`, idx)
 		args = append(args, filter.ScheduledDate)
+		idx++
+	}
+	if filter.ScheduledFrom != "" {
+		query += fmt.Sprintf(` AND scheduled_date >= $%d::date`, idx)
+		args = append(args, filter.ScheduledFrom)
+		idx++
+	}
+	if filter.ScheduledTo != "" {
+		query += fmt.Sprintf(` AND scheduled_date <= $%d::date`, idx)
+		args = append(args, filter.ScheduledTo)
+		idx++
+	}
+	if filter.DueFrom != "" {
+		query += fmt.Sprintf(` AND deadline IS NOT NULL AND deadline::date >= $%d::date`, idx)
+		args = append(args, filter.DueFrom)
+		idx++
+	}
+	if filter.DueTo != "" {
+		query += fmt.Sprintf(` AND deadline IS NOT NULL AND deadline::date <= $%d::date`, idx)
+		args = append(args, filter.DueTo)
 	}
 	query += ` ORDER BY created_at DESC`
 
