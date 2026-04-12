@@ -166,13 +166,15 @@ func main() {
 	// ── Routes: authenticated API v1 ─────────────────────────────────────────
 	// All routes under /api/v1 require a valid Clerk JWT.
 	api := app.Group("/api/v1", middleware.RequireAuth())
+	// balance must be registered before roles so /roles/balance is not
+	// swallowed by the parametric /roles/:id route.
+	balancehttp.RegisterRoutes(api, balanceService)
+	dashboardhttp.RegisterRoutes(api, dashboardService)
 	roleshttp.RegisterRoutes(api, rolesService)
 	goalshttp.RegisterRoutes(api, goalsService)
 	// ranking and inbox registered BEFORE tasks so /tasks/ranked and /tasks/inbox
 	// are matched as static paths before the parametric /tasks/:id route.
 	rankinghttp.RegisterRoutes(api, rankingService)
-	balancehttp.RegisterRoutes(api, balanceService)
-	dashboardhttp.RegisterRoutes(api, dashboardService)
 	inboxhttp.RegisterRoutes(api, inboxService)
 	taskshttp.RegisterRoutes(api, tasksService)
 	financehttp.RegisterRoutes(api, financeService)
@@ -205,6 +207,7 @@ func customErrorHandler(c *fiber.Ctx, err error) error {
 	if e, ok := err.(*fiber.Error); ok {
 		code = e.Code
 	}
+	log.Printf("[error] %s %s → %d: %v", c.Method(), c.Path(), code, err)
 	return c.Status(code).JSON(fiber.Map{
 		"error": fiber.Map{
 			"code":    "error",

@@ -1,6 +1,8 @@
 package balancehttp
 
 import (
+	"log"
+
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/jairogloz/life-concierge/internal/balance/ports"
@@ -29,6 +31,7 @@ func (h *Handler) GetBalance(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
 	summary, err := h.svc.GetRoleBalanceSummary(c.Context(), userID)
 	if err != nil {
+		log.Printf("ERROR GetBalance userID=%s: %v", userID, err)
 		return response.InternalError(c)
 	}
 	return c.JSON(fiber.Map{"data": summary})
