@@ -418,7 +418,7 @@ _Goal: Enrich the task domain with impact, effort, time estimation, scheduling, 
 
 ### Schema changes
 
-- ⬜ `backend/migrations/000009_task_model_v2.up.sql`:
+- ✅ `backend/migrations/000009_task_model_v2.up.sql`:
   - Rename column `urgency` → `impact` (`SMALLINT NOT NULL DEFAULT 3`, range 1–5)
   - Drop `commitment_type` ENUM, add `task_type` ENUM: `one_time | daily`
   - Add `scheduled_date DATE` — when the user intends to work on it
@@ -426,45 +426,45 @@ _Goal: Enrich the task domain with impact, effort, time estimation, scheduling, 
   - Add `effort SMALLINT NOT NULL DEFAULT 3` (1–5 scale)
   - Add `estimated_minutes INTEGER` — parsed from "1h 30m" syntax on the frontend
   - For **daily** tasks: add `completion_log JSONB DEFAULT '[]'` — array of `{"date": "YYYY-MM-DD", "done": true/false}` entries to track per-day status for statistics
-- ⬜ `backend/migrations/000009_task_model_v2.down.sql`
+- ✅ `backend/migrations/000009_task_model_v2.down.sql`
 
 ### Backend
 
-- ⬜ Update `tasks/domain/task.go` — new fields, `impact` label map (1=very low … 5=very high)
-- ⬜ Update `tasks/ports/*` — new create/update params (`TaskType`, `Impact`, `Effort`, `EstimatedMinutes`, `ScheduledDate`, `SoftDeadline`, `CompletionLog`)
-- ⬜ Update `tasks/adapters/postgres/repository.go` — read/write new columns
-- ⬜ Update `tasks/application/service.go`:
+- ✅ Update `tasks/domain/task.go` — new fields, `impact` label map (1=very low … 5=very high)
+- ✅ Update `tasks/ports/*` — new create/update params (`TaskType`, `Impact`, `Effort`, `EstimatedMinutes`, `ScheduledDate`, `SoftDeadline`, `CompletionLog`)
+- ✅ Update `tasks/adapters/postgres/repository.go` — read/write new columns
+- ✅ Update `tasks/application/service.go`:
   - `CompleteTask` for daily tasks: append today to `completion_log` rather than setting status=done
   - Expose `GetTaskTags(ctx, userID) ([]string, error)` — distinct tags for autocomplete
-- ⬜ New endpoint `GET /api/v1/tasks/tags` — returns all distinct tags for the authenticated user (autocomplete source)
+- ✅ New endpoint `GET /api/v1/tasks/tags` — returns all distinct tags for the authenticated user (autocomplete source)
 
 ### Ranking engine changes (scoring input only — formula improvements in Phase 13)
 
-- ⬜ Update scorer to use `impact` instead of `urgency`
-- ⬜ Factor `scheduled_date`: boost score on scheduled day; suppress score on other days (configurable)
-- ⬜ Factor `soft_deadline` / `deadline`: increase deadline pressure as both dates approach, with hard deadline having higher weight than soft
-- ⬜ ROI pre-computation: `roi = impact / sqrt(max(15, estimated_minutes))`; store as derived read field
+- ✅ Update scorer to use `impact` instead of `urgency`
+- ✅ Factor `scheduled_date`: boost score on scheduled day; suppress score on other days (configurable)
+- ✅ Factor `soft_deadline` / `deadline`: increase deadline pressure as both dates approach, with hard deadline having higher weight than soft
+- ✅ ROI pre-computation: `roi = impact / sqrt(max(15, estimated_minutes))`; store as derived read field
 
 ### API additions
 
-- ⬜ `GET /api/v1/tasks/tags` — distinct user tags (for autocomplete)
+- ✅ `GET /api/v1/tasks/tags` — distinct user tags (for autocomplete)
 
 ### Frontend — Task form changes (web + mobile)
 
-- ⬜ Replace urgency input with **Impact** dropdown: 1 Very Low / 2 Low / 3 Medium / 4 High / 5 Very High
-- ⬜ Replace commitment type with **Task type** dropdown: `one_time` | `daily`
-- ⬜ Add **Effort** dropdown (1–5, same labels as impact)
-- ⬜ Add **Estimated time** text input — accepts "1h", "30m", "1h 30m"; parse on submit to `estimated_minutes`
-- ⬜ Add **Scheduled date** date picker
-- ⬜ **Due date** replaces the single "deadline" input; show both soft and hard deadline pickers
-- ⬜ **Tag autocomplete**: on typing, fetch `/tasks/tags` and show suggestions; if no match → "Create tag" option that adds it in place
-- ⬜ Daily tasks in the Today view: show streak/calendar dot indicators using `completion_log` data
+- ✅ Replace urgency input with **Impact** dropdown: 1 Very Low / 2 Low / 3 Medium / 4 High / 5 Very High
+- ✅ Replace commitment type with **Task type** dropdown: `one_time` | `daily`
+- ✅ Add **Effort** dropdown (1–5, same labels as impact)
+- ✅ Add **Estimated time** text input — accepts "1h", "30m", "1h 30m"; parse on submit to `estimated_minutes`
+- ✅ Add **Scheduled date** date picker
+- ✅ **Due date** replaces the single "deadline" input; show both soft and hard deadline pickers
+- ✅ **Tag autocomplete**: on typing, fetch `/tasks/tags` and show suggestions; if no match → "Create tag" option that adds it in place
+- ✅ Daily tasks in the Today view: show streak/calendar dot indicators using `completion_log` data
 
 ### Frontend — AI Inbox edit-in-place
 
-- ⬜ After AI returns a task suggestion, show all fields in an editable form (pre-populated)
-- ⬜ User can modify any field before accepting — NOT just accept/reject
-- ⬜ "Save & Accept" submits the edited version; "Reject" discards as before
+- ✅ After AI returns a task suggestion, show all fields in an editable form (pre-populated)
+- ✅ User can modify any field before accepting — NOT just accept/reject
+- ✅ "Save & Accept" submits the edited version; "Reject" discards as before
 
 ### ✅ Testable milestone: Create a daily task, complete it 3 days in a row, see streak dots; create an AI task, edit its title and due date before accepting
 
@@ -475,8 +475,9 @@ _Goal: Enrich the task domain with impact, effort, time estimation, scheduling, 
 _Goal: Replace the simple ranking formula with two independent, explainable scoring systems that reflect real life tradeoffs between importance, effort, urgency, deadlines, role neglect, and goals._
 
 > These two systems are **conceptually separate** and must never be collapsed into one score.
-> - **Life Balance Score** answers: *"Which areas of life are under-served?"*
-> - **Execution Priority Score** answers: *"What is the right next action?"*
+>
+> - **Life Balance Score** answers: _"Which areas of life are under-served?"_
+> - **Execution Priority Score** answers: _"What is the right next action?"_
 
 ### Domain model extensions (migrations)
 
@@ -547,25 +548,25 @@ execution_priority_score =
 
 #### Multiplier defaults
 
-| Factor | Value |
-|---|---|
-| commitment (one_time) | 1.25 |
-| daily | 0.9 |
-| substantiveness: trivial | 0.4 |
-| substantiveness: normal | 1.0 |
-| substantiveness: strategic | 1.3 |
-| completion_quality on_time | 1.0 |
-| completion_quality late | 0.9 |
-| completion_quality partial | 0.6 |
-| neglect k constant | 0.8 |
-| rolling window | 14 days |
+| Factor                     | Value   |
+| -------------------------- | ------- |
+| commitment (one_time)      | 1.25    |
+| daily                      | 0.9     |
+| substantiveness: trivial   | 0.4     |
+| substantiveness: normal    | 1.0     |
+| substantiveness: strategic | 1.3     |
+| completion_quality on_time | 1.0     |
+| completion_quality late    | 0.9     |
+| completion_quality partial | 0.6     |
+| neglect k constant         | 0.8     |
+| rolling window             | 14 days |
 
 #### Implementation
 
 - ⬜ Update `backend/internal/ranking/domain/scorer.go` — replace old formula with full EPS formula
 - ⬜ Inject `BalanceService` into ranking service (used only to read balance scores, not to mutate)
 - ⬜ `GET /api/v1/tasks/ranked` — updated to return `execution_priority_score`, `rank`, `explanations` per task
-- ⬜ Explanation fields: human-readable strings, e.g. *"High ROI + Finance role neglected"*
+- ⬜ Explanation fields: human-readable strings, e.g. _"High ROI + Finance role neglected"_
 
 ### Combined dashboard endpoint
 
@@ -650,6 +651,7 @@ _Goal: Mark items as bought, order items by heuristic priority, align currencies
   item_roi    = impact / normalized_price   (price normalized to MXN using fixed rate)
   item_score  = item_roi × goal_weight × role_weight
   ```
+
   - Items without goal/role: use weight = 1.0
   - Price normalization: simple configurable USD→MXN rate (env var `USD_TO_MXN_RATE`, default 17.5)
 - ⬜ `GET /api/v1/wishlist/ranked` — returns items ordered by `item_score` with `rank` + `explanation`
@@ -736,24 +738,24 @@ _Goal: Log workouts and body metrics; framework for future wearable integrations
 
 ## Summary Table
 
-| Phase | Description                            | Status |
-| ----- | -------------------------------------- | ------ |
-| 0     | Repo scaffold + external services      | ✅     |
-| 1     | Backend foundation (Fiber + DB + auth) | ✅     |
-| 2     | Roles domain                           | ✅     |
-| 3     | Goals domain                           | ✅     |
-| 4     | Tasks domain                           | ✅     |
-| 5     | Ranking engine                         | ✅     |
-| 6     | AI task agent + inbox                  | ✅     |
-| 7     | Frontend web MVP                       | ✅     |
-| 8     | Frontend mobile MVP                    | ✅     |
-| 9     | Finance domain                         | ✅     |
-| 10    | Wishlist decision engine               | ✅     |
-| 11    | Timeline + daily strategy agent        | ✅     |
-| 12    | Task Model v2 (impact, effort, types)  | ⬜     |
-| 13    | Execution Priority + Life Balance Score| ⬜     |
-| 14    | Today Dashboard v2 + Task Filtering    | ⬜     |
-| 15    | Calendar View                          | ⬜     |
-| 16    | Wishlist v2 + Currency Enhancements    | ⬜     |
-| 17    | Gamification                           | ⬜     |
-| 18    | Health domain (deferred)               | ⬜     |
+| Phase | Description                             | Status |
+| ----- | --------------------------------------- | ------ |
+| 0     | Repo scaffold + external services       | ✅     |
+| 1     | Backend foundation (Fiber + DB + auth)  | ✅     |
+| 2     | Roles domain                            | ✅     |
+| 3     | Goals domain                            | ✅     |
+| 4     | Tasks domain                            | ✅     |
+| 5     | Ranking engine                          | ✅     |
+| 6     | AI task agent + inbox                   | ✅     |
+| 7     | Frontend web MVP                        | ✅     |
+| 8     | Frontend mobile MVP                     | ✅     |
+| 9     | Finance domain                          | ✅     |
+| 10    | Wishlist decision engine                | ✅     |
+| 11    | Timeline + daily strategy agent         | ✅     |
+| 12    | Task Model v2 (impact, effort, types)   | ✅     |
+| 13    | Execution Priority + Life Balance Score | ⬜     |
+| 14    | Today Dashboard v2 + Task Filtering     | ⬜     |
+| 15    | Calendar View                           | ⬜     |
+| 16    | Wishlist v2 + Currency Enhancements     | ⬜     |
+| 17    | Gamification                            | ⬜     |
+| 18    | Health domain (deferred)                | ⬜     |

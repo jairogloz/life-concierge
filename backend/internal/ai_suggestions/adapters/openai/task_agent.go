@@ -56,7 +56,7 @@ func buildSystemPrompt(roles []ports.RoleContext, goals []ports.GoalContext) str
 	var sb strings.Builder
 	sb.WriteString(`You are a personal operating system assistant. Extract a structured task from the user's text.\n\n`)
 	sb.WriteString("Return ONLY a valid JSON object with these fields:\n")
-	sb.WriteString(`{"title":"string","description":"string","role_id":"string","goal_id":"string or null","commitment_type":"commitment|habit|recurring|intention","urgency":5.0,"context_tags":[],"deadline_hint":"ISO date string or null"}\n\n`)
+	sb.WriteString(`{"title":"string","description":"string","role_id":"string","goal_id":"string or null","task_type":"one_time|daily","impact":3,"context_tags":[],"deadline_hint":"ISO date string or null"}\n\n`)
 
 	if len(roles) > 0 {
 		sb.WriteString("Available roles (pick the most appropriate role_id):\n")
@@ -70,7 +70,7 @@ func buildSystemPrompt(roles []ports.RoleContext, goals []ports.GoalContext) str
 			fmt.Fprintf(&sb, "- id=%s title=%s role=%s\n", g.ID, g.Title, g.RoleID)
 		}
 	}
-	sb.WriteString("\nurgency must be a number between 1 and 10. commitment_type must be one of: commitment, habit, recurring, intention.")
+	sb.WriteString("\nimpact must be an integer from 1 (very low) to 5 (very high). task_type must be one of: one_time, daily. Use daily only for habits or recurring activities.")
 	return sb.String()
 }
 

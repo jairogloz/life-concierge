@@ -82,6 +82,9 @@ func (m *mockTaskSvc) DeleteTask(ctx context.Context, userID, id string) error {
 func (m *mockTaskSvc) CompleteTask(ctx context.Context, userID, id string) (*taskdomain.Task, error) {
 	return nil, nil
 }
+func (m *mockTaskSvc) GetTaskTags(ctx context.Context, userID string) ([]string, error) {
+	return nil, nil
+}
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -102,10 +105,10 @@ func fakeSuggestion(id string) *domain.AISuggestion {
 		ID:     id,
 		UserID: "user-1",
 		Suggestion: domain.TaskSuggestion{
-			Title:          "Call mom",
-			CommitmentType: "commitment",
-			RoleID:         "role-1",
-			Urgency:        7.0,
+			Title:    "Call mom",
+			TaskType: "one_time",
+			RoleID:   "role-1",
+			Impact:   3,
 		},
 		Status:    "pending",
 		CreatedAt: time.Now(),
@@ -120,7 +123,7 @@ func TestProcessRawText_Success(t *testing.T) {
 
 	agent := &mockAgent{
 		extractFn: func(_ context.Context, _, _ string, _ []ports.RoleContext, _ []ports.GoalContext) (*domain.TaskSuggestion, error) {
-			return &domain.TaskSuggestion{Title: "Call mom", Urgency: 7, CommitmentType: "commitment", RoleID: "role-1"}, nil
+			return &domain.TaskSuggestion{Title: "Call mom", Impact: 3, TaskType: "one_time", RoleID: "role-1"}, nil
 		},
 	}
 	repo := &mockRepo{
@@ -159,7 +162,7 @@ func TestProcessRawText_AgentError(t *testing.T) {
 func TestProcessRawText_RepoError(t *testing.T) {
 	agent := &mockAgent{
 		extractFn: func(_ context.Context, _, _ string, _ []ports.RoleContext, _ []ports.GoalContext) (*domain.TaskSuggestion, error) {
-			return &domain.TaskSuggestion{Title: "t", Urgency: 5, CommitmentType: "intention", RoleID: "r"}, nil
+			return &domain.TaskSuggestion{Title: "t", Impact: 3, TaskType: "one_time", RoleID: "r"}, nil
 		},
 	}
 	repo := &mockRepo{
@@ -196,7 +199,7 @@ func TestAccept_Success(t *testing.T) {
 	}
 
 	svc := application.NewInboxService(repo, nil, noopRoles(), noopGoals(), tasksvc)
-	taskID, err := svc.Accept(context.Background(), "user-1", "sugg-1")
+	taskID, err := svc.Accept(context.Background(), "user-1", "sugg-1", nil)
 
 	require.NoError(t, err)
 	assert.Equal(t, "task-abc", taskID)
@@ -213,7 +216,7 @@ func TestAccept_NotFound(t *testing.T) {
 	}
 
 	svc := application.NewInboxService(repo, nil, noopRoles(), noopGoals(), nil)
-	_, err := svc.Accept(context.Background(), "user-1", "missing")
+	_, err := svc.Accept(context.Background(), "user-1", "missing", nil)
 
 	require.ErrorIs(t, err, domain.ErrSuggestionNotFound)
 }

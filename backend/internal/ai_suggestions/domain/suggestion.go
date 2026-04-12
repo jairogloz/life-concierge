@@ -10,14 +10,14 @@ var ErrSuggestionNotFound = errors.New("ai suggestion not found")
 
 // TaskSuggestion is the structured task that the AI extracted from raw text.
 type TaskSuggestion struct {
-	Title          string   `json:"title"`
-	Description    string   `json:"description"`
-	RoleID         string   `json:"role_id"`
-	GoalID         *string  `json:"goal_id,omitempty"`
-	CommitmentType string   `json:"commitment_type"`
-	Urgency        float64  `json:"urgency"`
-	ContextTags    []string `json:"context_tags"`
-	DeadlineHint   *string  `json:"deadline_hint,omitempty"`
+	Title        string   `json:"title"`
+	Description  string   `json:"description"`
+	RoleID       string   `json:"role_id"`
+	GoalID       *string  `json:"goal_id,omitempty"`
+	TaskType     string   `json:"task_type"`
+	Impact       int      `json:"impact"`
+	ContextTags  []string `json:"context_tags"`
+	DeadlineHint *string  `json:"deadline_hint,omitempty"`
 }
 
 // AISuggestion is the persistent record of an AI inbox item.

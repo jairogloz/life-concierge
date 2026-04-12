@@ -22,7 +22,12 @@ export interface Goal {
   updated_at: string;
 }
 
-export type CommitmentType = 'commitment' | 'habit' | 'recurring' | 'intention';
+export type TaskType = 'one_time' | 'daily';
+
+export interface CompletionEntry {
+  date: string;
+  done: boolean;
+}
 
 export interface Task {
   id: string;
@@ -31,8 +36,13 @@ export interface Task {
   goal_id: string | null;
   title: string;
   description: string;
-  commitment_type: CommitmentType;
-  urgency: number;
+  task_type: TaskType;
+  impact: number;
+  effort: number;
+  estimated_minutes: number | null;
+  scheduled_date: string | null;
+  soft_deadline: string | null;
+  completion_log: CompletionEntry[];
   status: string;
   context_tags: string[];
   secondary_roles: string[];
@@ -41,7 +51,6 @@ export interface Task {
   recurrence_rule: string | null;
   created_at: string;
   updated_at: string;
-  completed_at: string | null;
 }
 
 export interface ScoredTask {
@@ -54,8 +63,8 @@ export interface TaskSuggestion {
   description: string;
   role_id: string;
   goal_id: string | null;
-  commitment_type: CommitmentType;
-  urgency: number;
+  task_type: TaskType;
+  impact: number;
   context_tags: string[];
   deadline_hint: string | null;
 }

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -14,8 +15,9 @@ import (
 )
 
 const taskColumns = `id, user_id, primary_role_id, goal_id, title, description,
-    commitment_type, context_tags, urgency, deadline, is_recurring, recurrence_rule,
-    status, created_at, updated_at`
+    task_type, context_tags, impact, deadline, soft_deadline, scheduled_date,
+    effort, estimated_minutes, completion_log,
+    is_recurring, recurrence_rule, status, created_at, updated_at`
 
 // TaskRepository is a PostgreSQL implementation of ports.TaskRepository.
 type TaskRepository struct {
@@ -28,13 +30,19 @@ func NewTaskRepository(db *pgxpool.Pool) *TaskRepository {
 }
 
 func (r *TaskRepository) Create(ctx context.Context, task *domain.Task) error {
-	_, err := r.db.Exec(ctx,
+	logBytes, err := json.Marshal(task.CompletionLog)
+	if err != nil {
+		return fmt.Errorf("tasks.Create marshal log: %w", err)
+	}
+	_, err = r.db.Exec(ctx,
 		`INSERT INTO tasks (`+taskColumns+`)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
 		task.ID, task.UserID, task.PrimaryRoleID, task.GoalID,
-		task.Title, task.Description, task.CommitmentType, task.ContextTags,
-		task.Urgency, task.Deadline, task.IsRecurring, task.RecurrenceRule,
-		task.Status, task.CreatedAt, task.UpdatedAt,
+		task.Title, task.Description, task.TaskType, task.ContextTags,
+		task.Impact, task.Deadline, task.SoftDeadline, task.ScheduledDate,
+		task.Effort, task.EstimatedMinutes, logBytes,
+		task.IsRecurring, task.RecurrenceRule, task.Status,
+		task.CreatedAt, task.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("tasks.Create: %w", err)
@@ -80,6 +88,11 @@ func (r *TaskRepository) List(ctx context.Context, userID string, filter ports.T
 	if filter.Context != "" {
 		query += fmt.Sprintf(` AND $%d=ANY(context_tags)`, idx)
 		args = append(args, filter.Context)
+		idx++
+	}
+	if filter.ScheduledDate != "" {
+		query += fmt.Sprintf(` AND scheduled_date=$%d`, idx)
+		args = append(args, filter.ScheduledDate)
 	}
 	query += ` ORDER BY created_at DESC`
 
@@ -110,15 +123,22 @@ func (r *TaskRepository) List(ctx context.Context, userID string, filter ports.T
 }
 
 func (r *TaskRepository) Update(ctx context.Context, task *domain.Task) error {
-	_, err := r.db.Exec(ctx,
+	logBytes, err := json.Marshal(task.CompletionLog)
+	if err != nil {
+		return fmt.Errorf("tasks.Update marshal log: %w", err)
+	}
+	_, err = r.db.Exec(ctx,
 		`UPDATE tasks
-		    SET title=$1, description=$2, commitment_type=$3, context_tags=$4,
-		        urgency=$5, deadline=$6, is_recurring=$7, recurrence_rule=$8,
-		        status=$9, updated_at=$10
-		  WHERE id=$11 AND user_id=$12`,
-		task.Title, task.Description, task.CommitmentType, task.ContextTags,
-		task.Urgency, task.Deadline, task.IsRecurring, task.RecurrenceRule,
-		task.Status, task.UpdatedAt, task.ID, task.UserID,
+		    SET title=$1, description=$2, task_type=$3, context_tags=$4,
+		        impact=$5, deadline=$6, soft_deadline=$7, scheduled_date=$8,
+		        effort=$9, estimated_minutes=$10, completion_log=$11,
+		        is_recurring=$12, recurrence_rule=$13, status=$14, updated_at=$15
+		  WHERE id=$16 AND user_id=$17`,
+		task.Title, task.Description, task.TaskType, task.ContextTags,
+		task.Impact, task.Deadline, task.SoftDeadline, task.ScheduledDate,
+		task.Effort, task.EstimatedMinutes, logBytes,
+		task.IsRecurring, task.RecurrenceRule, task.Status, task.UpdatedAt,
+		task.ID, task.UserID,
 	)
 	if err != nil {
 		return fmt.Errorf("tasks.Update: %w", err)
@@ -162,6 +182,32 @@ func (r *TaskRepository) SetSecondaryRoles(ctx context.Context, taskID string, r
 	return nil
 }
 
+func (r *TaskRepository) GetDistinctTags(ctx context.Context, userID string) ([]string, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT DISTINCT unnest(context_tags) AS tag
+		   FROM tasks
+		  WHERE user_id=$1 AND context_tags IS NOT NULL
+		  ORDER BY tag`,
+		userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("tasks.GetDistinctTags: %w", err)
+	}
+	defer rows.Close()
+	var tags []string
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, err
+		}
+		tags = append(tags, tag)
+	}
+	if tags == nil {
+		tags = []string{}
+	}
+	return tags, rows.Err()
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 type scanner interface {
@@ -170,11 +216,14 @@ type scanner interface {
 
 func scanTask(row scanner) (*domain.Task, error) {
 	t := &domain.Task{}
+	var logBytes []byte
 	err := row.Scan(
 		&t.ID, &t.UserID, &t.PrimaryRoleID, &t.GoalID,
-		&t.Title, &t.Description, &t.CommitmentType, &t.ContextTags,
-		&t.Urgency, &t.Deadline, &t.IsRecurring, &t.RecurrenceRule,
-		&t.Status, &t.CreatedAt, &t.UpdatedAt,
+		&t.Title, &t.Description, &t.TaskType, &t.ContextTags,
+		&t.Impact, &t.Deadline, &t.SoftDeadline, &t.ScheduledDate,
+		&t.Effort, &t.EstimatedMinutes, &logBytes,
+		&t.IsRecurring, &t.RecurrenceRule, &t.Status,
+		&t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -184,6 +233,14 @@ func scanTask(row scanner) (*domain.Task, error) {
 	}
 	if t.ContextTags == nil {
 		t.ContextTags = []string{}
+	}
+	if len(logBytes) > 0 {
+		if err := json.Unmarshal(logBytes, &t.CompletionLog); err != nil {
+			t.CompletionLog = []domain.CompletionEntry{}
+		}
+	}
+	if t.CompletionLog == nil {
+		t.CompletionLog = []domain.CompletionEntry{}
 	}
 	t.SecondaryRoles = []string{}
 	return t, nil

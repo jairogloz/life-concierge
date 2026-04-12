@@ -11,9 +11,9 @@ import (
 // ScoredTask pairs a task with its computed priority score and contributing weights.
 type ScoredTask struct {
 	Task       *taskdomain.Task `json:"task"`
-	Score      float64 `json:"score"`
-	RoleWeight float64 `json:"role_weight"`
-	GoalWeight float64 `json:"goal_weight"`
+	Score      float64          `json:"score"`
+	RoleWeight float64          `json:"role_weight"`
+	GoalWeight float64          `json:"goal_weight"`
 }
 
 // ScoreInput holds everything needed to compute a task score.
@@ -25,7 +25,8 @@ type ScoreInput struct {
 }
 
 // ComputeScore computes the priority score for a task.
-// Formula: role_weight x goal_weight x urgency x commitment_multiplier x deadline_pressure
+// Formula: roi = (roleW * goalW * impact * taskTypeMult) / sqrt(max(15, estimatedMinutes))
+// Multiplied by deadlinePressure and scheduledMult.
 func ComputeScore(in ScoreInput) float64 {
 	roleW := in.RoleWeight
 	if roleW <= 0 {
@@ -35,31 +36,87 @@ func ComputeScore(in ScoreInput) float64 {
 	if goalW <= 0 {
 		goalW = 1.0
 	}
-	urgency := in.Task.Urgency
-	commitMult, ok := taskdomain.CommitmentMultiplier[in.Task.CommitmentType]
-	if !ok || commitMult <= 0 {
-		commitMult = 1.0
+
+	estMins := 30.0
+	if in.Task.EstimatedMinutes != nil && *in.Task.EstimatedMinutes > 0 {
+		estMins = float64(*in.Task.EstimatedMinutes)
 	}
-	deadlinePressure := computeDeadlinePressure(in.Task.Deadline, in.Now)
-	return roleW * goalW * urgency * commitMult * deadlinePressure
+	effortCost := math.Sqrt(math.Max(15, estMins))
+
+	taskMult, ok := taskdomain.TaskTypeMultiplier[in.Task.TaskType]
+	if !ok || taskMult <= 0 {
+		taskMult = 1.0
+	}
+
+	taskValue := roleW * goalW * float64(in.Task.Impact) * taskMult
+	roi := taskValue / effortCost
+
+	dp := computeDeadlinePressure(in.Task.Deadline, in.Task.SoftDeadline, in.Now)
+	scheduledMult := computeScheduledMult(in.Task.ScheduledDate, in.Now)
+
+	return roi * dp * scheduledMult
 }
 
-// computeDeadlinePressure returns a multiplier [1.0, 10.0] based on time left.
-// Exponential decay: pressure rises as deadline approaches. Overdue tasks score 10.0.
-func computeDeadlinePressure(deadline *time.Time, now time.Time) float64 {
-	if deadline == nil {
+// computeDeadlinePressure returns a multiplier >= 1.0 based on how close either
+// the hard deadline or soft deadline is.
+// Hard: exp(-days/14)*10, max 10.0; overdue → 10.0.
+// Soft: exp(-days/21)*5,  max 5.0;  soft overdue → 2.5 floor.
+func computeDeadlinePressure(hard, soft *time.Time, now time.Time) float64 {
+	pressure := 1.0
+
+	if hard != nil {
+		daysLeft := hard.Sub(now).Hours() / 24.0
+		var p float64
+		if daysLeft <= 0 {
+			p = 10.0
+		} else {
+			p = math.Exp(-daysLeft/14.0) * 10.0
+			if p < 1.0 {
+				p = 1.0
+			}
+		}
+		if p > pressure {
+			pressure = p
+		}
+	}
+
+	if soft != nil {
+		daysLeft := soft.Sub(now).Hours() / 24.0
+		var p float64
+		if daysLeft <= 0 {
+			p = 2.5 // floor for passed soft deadline
+		} else {
+			p = math.Exp(-daysLeft/21.0) * 5.0
+			if p < 1.0 {
+				p = 1.0
+			}
+		}
+		if p > pressure {
+			pressure = p
+		}
+	}
+
+	return pressure
+}
+
+// computeScheduledMult returns:
+//   - 1.5 if scheduled_date is today
+//   - 0.5 if scheduled_date is a future date
+//   - 1.0 if not scheduled or scheduled in the past
+func computeScheduledMult(scheduledDate *time.Time, now time.Time) float64 {
+	if scheduledDate == nil {
 		return 1.0
 	}
-	daysLeft := deadline.Sub(now).Hours() / 24.0
-	if daysLeft <= 0 {
-		return 10.0 // overdue — max pressure
+	nowDate := now.Truncate(24 * time.Hour)
+	schedDate := scheduledDate.UTC().Truncate(24 * time.Hour)
+	switch {
+	case schedDate.Equal(nowDate):
+		return 1.5
+	case schedDate.After(nowDate):
+		return 0.5
+	default:
+		return 1.0
 	}
-	// pressure = e^(-daysLeft/14) * 10, clamped to [1.0, 10.0]
-	pressure := math.Exp(-daysLeft/14.0) * 10.0
-	if pressure < 1.0 {
-		pressure = 1.0
-	}
-	return pressure
 }
 
 // RankTasks scores and sorts tasks by descending priority score.

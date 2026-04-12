@@ -9,17 +9,17 @@ import (
 
 	"github.com/jairogloz/life-concierge/internal/ai_suggestions/domain"
 	"github.com/jairogloz/life-concierge/internal/ai_suggestions/ports"
-	tasksports "github.com/jairogloz/life-concierge/internal/tasks/ports"
 	taskdomain "github.com/jairogloz/life-concierge/internal/tasks/domain"
+	tasksports "github.com/jairogloz/life-concierge/internal/tasks/ports"
 )
 
 // InboxService orchestrates the AI inbox.
 type InboxService struct {
-	repo       ports.SuggestionRepository
-	agent      ports.TaskAgent
-	rolesRepo  RoleReader
-	goalsRepo  GoalReader
-	tasksvc    tasksports.TaskService
+	repo      ports.SuggestionRepository
+	agent     ports.TaskAgent
+	rolesRepo RoleReader
+	goalsRepo GoalReader
+	tasksvc   tasksports.TaskService
 }
 
 // RoleReader fetches role context for the AI agent.
@@ -87,30 +87,56 @@ func (s *InboxService) ListPending(ctx context.Context, userID string) ([]*domai
 	return s.repo.ListPending(ctx, userID)
 }
 
-func (s *InboxService) Accept(ctx context.Context, userID, id string) (string, error) {
+func (s *InboxService) Accept(ctx context.Context, userID, id string, overrides *domain.TaskSuggestion) (string, error) {
 	rec, err := s.repo.GetByID(ctx, userID, id)
 	if err != nil {
 		return "", err
 	}
 
-	ct := taskdomain.CommitmentType(rec.Suggestion.CommitmentType)
-	if _, ok := taskdomain.CommitmentMultiplier[ct]; !ok {
-		ct = taskdomain.CommitmentTypeIntention
+	// Merge overrides on top of the stored suggestion (edit-in-place).
+	sugg := rec.Suggestion
+	if overrides != nil {
+		if overrides.Title != "" {
+			sugg.Title = overrides.Title
+		}
+		if overrides.Description != "" {
+			sugg.Description = overrides.Description
+		}
+		if overrides.RoleID != "" {
+			sugg.RoleID = overrides.RoleID
+		}
+		if overrides.GoalID != nil {
+			sugg.GoalID = overrides.GoalID
+		}
+		if overrides.TaskType != "" {
+			sugg.TaskType = overrides.TaskType
+		}
+		if overrides.Impact != 0 {
+			sugg.Impact = overrides.Impact
+		}
+		if len(overrides.ContextTags) > 0 {
+			sugg.ContextTags = overrides.ContextTags
+		}
 	}
-	urgency := rec.Suggestion.Urgency
-	if urgency < 1 || urgency > 10 {
-		urgency = 5.0
+
+	tt := taskdomain.TaskType(sugg.TaskType)
+	if _, ok := taskdomain.TaskTypeMultiplier[tt]; !ok {
+		tt = taskdomain.TaskTypeOneTime
+	}
+	impact := sugg.Impact
+	if impact < 1 || impact > 5 {
+		impact = 3
 	}
 
 	task, err := s.tasksvc.CreateTask(ctx, tasksports.CreateTaskParams{
-		UserID:         userID,
-		PrimaryRoleID:  rec.Suggestion.RoleID,
-		GoalID:         rec.Suggestion.GoalID,
-		Title:          rec.Suggestion.Title,
-		Description:    rec.Suggestion.Description,
-		CommitmentType: ct,
-		ContextTags:    rec.Suggestion.ContextTags,
-		Urgency:        urgency,
+		UserID:        userID,
+		PrimaryRoleID: sugg.RoleID,
+		GoalID:        sugg.GoalID,
+		Title:         sugg.Title,
+		Description:   sugg.Description,
+		TaskType:      tt,
+		ContextTags:   sugg.ContextTags,
+		Impact:        impact,
 	})
 	if err != nil {
 		return "", fmt.Errorf("inbox: create task: %w", err)

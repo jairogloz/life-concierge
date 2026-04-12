@@ -26,7 +26,7 @@ type mockInboxSvc struct {
 	processFn    func(ctx context.Context, userID, rawText string) (*domain.AISuggestion, error)
 	getFn        func(ctx context.Context, userID, id string) (*domain.AISuggestion, error)
 	listFn       func(ctx context.Context, userID string) ([]*domain.AISuggestion, error)
-	acceptFn     func(ctx context.Context, userID, id string) (string, error)
+	acceptFn     func(ctx context.Context, userID, id string, overrides *domain.TaskSuggestion) (string, error)
 	rejectFn     func(ctx context.Context, userID, id string) error
 }
 
@@ -39,8 +39,8 @@ func (m *mockInboxSvc) GetSuggestion(ctx context.Context, userID, id string) (*d
 func (m *mockInboxSvc) ListPending(ctx context.Context, userID string) ([]*domain.AISuggestion, error) {
 	return m.listFn(ctx, userID)
 }
-func (m *mockInboxSvc) Accept(ctx context.Context, userID, id string) (string, error) {
-	return m.acceptFn(ctx, userID, id)
+func (m *mockInboxSvc) Accept(ctx context.Context, userID, id string, overrides *domain.TaskSuggestion) (string, error) {
+	return m.acceptFn(ctx, userID, id, overrides)
 }
 func (m *mockInboxSvc) Reject(ctx context.Context, userID, id string) error {
 	return m.rejectFn(ctx, userID, id)
@@ -86,10 +86,10 @@ func fakeSuggestion(id string) *domain.AISuggestion {
 		ID:     id,
 		UserID: "test-user-id",
 		Suggestion: domain.TaskSuggestion{
-			Title:          "Call mom",
-			CommitmentType: "commitment",
-			RoleID:         "role-1",
-			Urgency:        7.0,
+			Title:    "Call mom",
+			TaskType: "one_time",
+			RoleID:   "role-1",
+			Impact:   3,
 		},
 		Status:    "pending",
 		CreatedAt: time.Now(),
@@ -173,7 +173,7 @@ func TestListPending_200_Empty(t *testing.T) {
 
 func TestAccept_200(t *testing.T) {
 	svc := &mockInboxSvc{
-		acceptFn: func(_ context.Context, userID, id string) (string, error) {
+		acceptFn: func(_ context.Context, userID, id string, _ *domain.TaskSuggestion) (string, error) {
 			assert.Equal(t, "test-user-id", userID)
 			assert.Equal(t, "sugg-1", id)
 			return "task-xyz", nil
@@ -190,7 +190,7 @@ func TestAccept_200(t *testing.T) {
 
 func TestAccept_404(t *testing.T) {
 	svc := &mockInboxSvc{
-		acceptFn: func(_ context.Context, _, _ string) (string, error) {
+		acceptFn: func(_ context.Context, _, _ string, _ *domain.TaskSuggestion) (string, error) {
 			return "", domain.ErrSuggestionNotFound
 		},
 	}

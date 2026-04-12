@@ -59,7 +59,17 @@ func (h *Handler) ListPending(c *fiber.Ctx) error {
 func (h *Handler) Accept(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
 	id := c.Params("id")
-	taskID, err := h.svc.Accept(c.Context(), userID, id)
+
+	// Optional override body — frontend can send edited suggestion fields.
+	var overrides *domain.TaskSuggestion
+	if len(c.Body()) > 0 {
+		var req domain.TaskSuggestion
+		if err := c.BodyParser(&req); err == nil {
+			overrides = &req
+		}
+	}
+
+	taskID, err := h.svc.Accept(c.Context(), userID, id, overrides)
 	if err != nil {
 		if errors.Is(err, domain.ErrSuggestionNotFound) {
 			return response.NotFound(c, "suggestion not found")

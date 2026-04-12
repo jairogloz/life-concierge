@@ -6,10 +6,10 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/jairogloz/life-concierge/internal/tasks/domain"
-	"github.com/jairogloz/life-concierge/internal/tasks/ports"
 	"github.com/jairogloz/life-concierge/internal/shared/middleware"
 	"github.com/jairogloz/life-concierge/internal/shared/response"
+	"github.com/jairogloz/life-concierge/internal/tasks/domain"
+	"github.com/jairogloz/life-concierge/internal/tasks/ports"
 )
 
 // Handler holds the HTTP handlers for the tasks domain.
@@ -23,10 +23,12 @@ func NewHandler(svc ports.TaskService) *Handler {
 }
 
 // RegisterRoutes attaches all task routes to the provided Fiber router.
+// NOTE: /tasks/tags MUST be registered before /tasks/:id to avoid param capture.
 func RegisterRoutes(router fiber.Router, svc ports.TaskService) {
 	h := NewHandler(svc)
 	router.Post("/tasks", h.CreateTask)
 	router.Get("/tasks", h.ListTasks)
+	router.Get("/tasks/tags", h.GetTags)
 	router.Get("/tasks/:id", h.GetTask)
 	router.Put("/tasks/:id", h.UpdateTask)
 	router.Delete("/tasks/:id", h.DeleteTask)
@@ -36,31 +38,41 @@ func RegisterRoutes(router fiber.Router, svc ports.TaskService) {
 // ── Request types ─────────────────────────────────────────────────────────────
 
 type createTaskRequest struct {
-	PrimaryRoleID  string                `json:"primary_role_id"`
-	GoalID         *string               `json:"goal_id"`
-	Title          string                `json:"title"`
-	Description    string                `json:"description"`
-	CommitmentType domain.CommitmentType `json:"commitment_type"`
-	ContextTags    []string              `json:"context_tags"`
-	Urgency        float64               `json:"urgency"`
-	Deadline       *time.Time            `json:"deadline"`
-	IsRecurring    bool                  `json:"is_recurring"`
-	RecurrenceRule *string               `json:"recurrence_rule"`
-	SecondaryRoles []string              `json:"secondary_role_ids"`
+	PrimaryRoleID    string           `json:"primary_role_id"`
+	GoalID           *string          `json:"goal_id"`
+	Title            string           `json:"title"`
+	Description      string           `json:"description"`
+	TaskType         domain.TaskType  `json:"task_type"`
+	ContextTags      []string         `json:"context_tags"`
+	Impact           int              `json:"impact"`
+	Deadline         *time.Time       `json:"deadline"`
+	SoftDeadline     *time.Time       `json:"soft_deadline"`
+	ScheduledDate    *time.Time       `json:"scheduled_date"`
+	Effort           int              `json:"effort"`
+	EstimatedMinutes *int             `json:"estimated_minutes"`
+	IsRecurring      bool             `json:"is_recurring"`
+	RecurrenceRule   *string          `json:"recurrence_rule"`
+	SecondaryRoles   []string         `json:"secondary_role_ids"`
 }
 
 type updateTaskRequest struct {
-	Title          *string                `json:"title"`
-	Description    *string                `json:"description"`
-	CommitmentType *domain.CommitmentType `json:"commitment_type"`
-	ContextTags    []string               `json:"context_tags"`
-	Urgency        *float64               `json:"urgency"`
-	Deadline       *time.Time             `json:"deadline"`
-	ClearDeadline  bool                   `json:"clear_deadline"`
-	IsRecurring    *bool                  `json:"is_recurring"`
-	RecurrenceRule *string                `json:"recurrence_rule"`
-	Status         *string                `json:"status"`
-	SecondaryRoles []string               `json:"secondary_role_ids"`
+	Title              *string          `json:"title"`
+	Description        *string          `json:"description"`
+	TaskType           *domain.TaskType `json:"task_type"`
+	ContextTags        []string         `json:"context_tags"`
+	Impact             *int             `json:"impact"`
+	Deadline           *time.Time       `json:"deadline"`
+	ClearDeadline      bool             `json:"clear_deadline"`
+	SoftDeadline       *time.Time       `json:"soft_deadline"`
+	ClearSoftDeadline  bool             `json:"clear_soft_deadline"`
+	ScheduledDate      *time.Time       `json:"scheduled_date"`
+	ClearScheduledDate bool             `json:"clear_scheduled_date"`
+	Effort             *int             `json:"effort"`
+	EstimatedMinutes   *int             `json:"estimated_minutes"`
+	IsRecurring        *bool            `json:"is_recurring"`
+	RecurrenceRule     *string          `json:"recurrence_rule"`
+	Status             *string          `json:"status"`
+	SecondaryRoles     []string         `json:"secondary_role_ids"`
 }
 
 // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -72,18 +84,22 @@ func (h *Handler) CreateTask(c *fiber.Ctx) error {
 		return response.BadRequest(c, "invalid request body")
 	}
 	task, err := h.svc.CreateTask(c.Context(), ports.CreateTaskParams{
-		UserID:         userID,
-		PrimaryRoleID:  req.PrimaryRoleID,
-		GoalID:         req.GoalID,
-		Title:          req.Title,
-		Description:    req.Description,
-		CommitmentType: req.CommitmentType,
-		ContextTags:    req.ContextTags,
-		Urgency:        req.Urgency,
-		Deadline:       req.Deadline,
-		IsRecurring:    req.IsRecurring,
-		RecurrenceRule: req.RecurrenceRule,
-		SecondaryRoles: req.SecondaryRoles,
+		UserID:           userID,
+		PrimaryRoleID:    req.PrimaryRoleID,
+		GoalID:           req.GoalID,
+		Title:            req.Title,
+		Description:      req.Description,
+		TaskType:         req.TaskType,
+		ContextTags:      req.ContextTags,
+		Impact:           req.Impact,
+		Deadline:         req.Deadline,
+		SoftDeadline:     req.SoftDeadline,
+		ScheduledDate:    req.ScheduledDate,
+		Effort:           req.Effort,
+		EstimatedMinutes: req.EstimatedMinutes,
+		IsRecurring:      req.IsRecurring,
+		RecurrenceRule:   req.RecurrenceRule,
+		SecondaryRoles:   req.SecondaryRoles,
 	})
 	if err != nil {
 		if isValidationError(err) {
@@ -97,10 +113,11 @@ func (h *Handler) CreateTask(c *fiber.Ctx) error {
 func (h *Handler) ListTasks(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
 	filter := ports.TaskFilter{
-		RoleID:  c.Query("role_id"),
-		GoalID:  c.Query("goal_id"),
-		Status:  c.Query("status"),
-		Context: c.Query("context"),
+		RoleID:        c.Query("role_id"),
+		GoalID:        c.Query("goal_id"),
+		Status:        c.Query("status"),
+		Context:       c.Query("context"),
+		ScheduledDate: c.Query("scheduled_date"),
 	}
 	tasks, err := h.svc.ListTasks(c.Context(), userID, filter)
 	if err != nil {
@@ -122,6 +139,15 @@ func (h *Handler) GetTask(c *fiber.Ctx) error {
 	return c.JSON(task)
 }
 
+func (h *Handler) GetTags(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+	tags, err := h.svc.GetTaskTags(c.Context(), userID)
+	if err != nil {
+		return response.InternalError(c)
+	}
+	return c.JSON(fiber.Map{"data": tags})
+}
+
 func (h *Handler) UpdateTask(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
 	id := c.Params("id")
@@ -130,17 +156,23 @@ func (h *Handler) UpdateTask(c *fiber.Ctx) error {
 		return response.BadRequest(c, "invalid request body")
 	}
 	task, err := h.svc.UpdateTask(c.Context(), userID, id, ports.UpdateTaskParams{
-		Title:          req.Title,
-		Description:    req.Description,
-		CommitmentType: req.CommitmentType,
-		ContextTags:    req.ContextTags,
-		Urgency:        req.Urgency,
-		Deadline:       req.Deadline,
-		ClearDeadline:  req.ClearDeadline,
-		IsRecurring:    req.IsRecurring,
-		RecurrenceRule: req.RecurrenceRule,
-		Status:         req.Status,
-		SecondaryRoles: req.SecondaryRoles,
+		Title:              req.Title,
+		Description:        req.Description,
+		TaskType:           req.TaskType,
+		ContextTags:        req.ContextTags,
+		Impact:             req.Impact,
+		Deadline:           req.Deadline,
+		ClearDeadline:      req.ClearDeadline,
+		SoftDeadline:       req.SoftDeadline,
+		ClearSoftDeadline:  req.ClearSoftDeadline,
+		ScheduledDate:      req.ScheduledDate,
+		ClearScheduledDate: req.ClearScheduledDate,
+		Effort:             req.Effort,
+		EstimatedMinutes:   req.EstimatedMinutes,
+		IsRecurring:        req.IsRecurring,
+		RecurrenceRule:     req.RecurrenceRule,
+		Status:             req.Status,
+		SecondaryRoles:     req.SecondaryRoles,
 	})
 	if err != nil {
 		if errors.Is(err, domain.ErrTaskNotFound) {

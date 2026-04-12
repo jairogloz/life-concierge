@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -26,9 +27,11 @@ func (r *RankingRepository) FetchScoringInputs(ctx context.Context, userID strin
 	query := `
 		SELECT
 		    t.id, t.user_id, t.primary_role_id, t.goal_id,
-		    t.title, t.description, t.commitment_type, t.context_tags,
-		    t.urgency, t.deadline, t.is_recurring, t.recurrence_rule,
-		    t.status, t.created_at, t.updated_at,
+		    t.title, t.description, t.task_type, t.context_tags,
+		    t.impact, t.deadline, t.soft_deadline, t.scheduled_date,
+		    t.effort, t.estimated_minutes, t.completion_log,
+		    t.is_recurring, t.recurrence_rule, t.status,
+		    t.created_at, t.updated_at,
 		    r.weight AS role_weight,
 		    COALESCE(g.weight, 1.0) AS goal_weight
 		FROM tasks t
@@ -61,17 +64,26 @@ func (r *RankingRepository) FetchScoringInputs(ctx context.Context, userID strin
 	for rows.Next() {
 		t := &taskdomain.Task{}
 		var roleWeight, goalWeight float64
+		var logBytes []byte
 		if err := rows.Scan(
 			&t.ID, &t.UserID, &t.PrimaryRoleID, &t.GoalID,
-			&t.Title, &t.Description, &t.CommitmentType, &t.ContextTags,
-			&t.Urgency, &t.Deadline, &t.IsRecurring, &t.RecurrenceRule,
-			&t.Status, &t.CreatedAt, &t.UpdatedAt,
+			&t.Title, &t.Description, &t.TaskType, &t.ContextTags,
+			&t.Impact, &t.Deadline, &t.SoftDeadline, &t.ScheduledDate,
+			&t.Effort, &t.EstimatedMinutes, &logBytes,
+			&t.IsRecurring, &t.RecurrenceRule, &t.Status,
+			&t.CreatedAt, &t.UpdatedAt,
 			&roleWeight, &goalWeight,
 		); err != nil {
 			return nil, fmt.Errorf("ranking.scan: %w", err)
 		}
 		if t.ContextTags == nil {
 			t.ContextTags = []string{}
+		}
+		if len(logBytes) > 0 {
+			_ = json.Unmarshal(logBytes, &t.CompletionLog)
+		}
+		if t.CompletionLog == nil {
+			t.CompletionLog = []taskdomain.CompletionEntry{}
 		}
 		t.SecondaryRoles = []string{}
 		inputs = append(inputs, domain.ScoreInput{

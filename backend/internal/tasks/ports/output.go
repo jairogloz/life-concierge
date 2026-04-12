@@ -14,4 +14,5 @@ type TaskRepository interface {
 	Update(ctx context.Context, task *domain.Task) error
 	Delete(ctx context.Context, userID, id string) error
 	SetSecondaryRoles(ctx context.Context, taskID string, roleIDs []string) error
+	GetDistinctTags(ctx context.Context, userID string) ([]string, error)
 }

@@ -28,31 +28,40 @@ func NewTaskService(repo ports.TaskRepository) *TaskService {
 }
 
 func (s *TaskService) CreateTask(ctx context.Context, params ports.CreateTaskParams) (*domain.Task, error) {
-	ct := params.CommitmentType
-	if ct == "" {
-		ct = domain.CommitmentTypeIntention
+	tt := params.TaskType
+	if tt == "" {
+		tt = domain.TaskTypeOneTime
 	}
-	urgency := params.Urgency
-	if urgency == 0 {
-		urgency = 5.0
+	impact := params.Impact
+	if impact == 0 {
+		impact = 3
+	}
+	effort := params.Effort
+	if effort == 0 {
+		effort = 3
 	}
 	task := &domain.Task{
-		ID:             uuid.New().String(),
-		UserID:         params.UserID,
-		PrimaryRoleID:  params.PrimaryRoleID,
-		GoalID:         params.GoalID,
-		Title:          params.Title,
-		Description:    params.Description,
-		CommitmentType: ct,
-		ContextTags:    params.ContextTags,
-		Urgency:        urgency,
-		Deadline:       params.Deadline,
-		IsRecurring:    params.IsRecurring,
-		RecurrenceRule: params.RecurrenceRule,
-		Status:         "todo",
-		SecondaryRoles: params.SecondaryRoles,
-		CreatedAt:      time.Now().UTC(),
-		UpdatedAt:      time.Now().UTC(),
+		ID:               uuid.New().String(),
+		UserID:           params.UserID,
+		PrimaryRoleID:    params.PrimaryRoleID,
+		GoalID:           params.GoalID,
+		Title:            params.Title,
+		Description:      params.Description,
+		TaskType:         tt,
+		ContextTags:      params.ContextTags,
+		Impact:           impact,
+		Deadline:         params.Deadline,
+		SoftDeadline:     params.SoftDeadline,
+		ScheduledDate:    params.ScheduledDate,
+		Effort:           effort,
+		EstimatedMinutes: params.EstimatedMinutes,
+		CompletionLog:    []domain.CompletionEntry{},
+		IsRecurring:      params.IsRecurring,
+		RecurrenceRule:   params.RecurrenceRule,
+		Status:           "todo",
+		SecondaryRoles:   params.SecondaryRoles,
+		CreatedAt:        time.Now().UTC(),
+		UpdatedAt:        time.Now().UTC(),
 	}
 	if task.ContextTags == nil {
 		task.ContextTags = []string{}
@@ -94,19 +103,35 @@ func (s *TaskService) UpdateTask(ctx context.Context, userID, id string, params 
 	if params.Description != nil {
 		task.Description = *params.Description
 	}
-	if params.CommitmentType != nil {
-		task.CommitmentType = *params.CommitmentType
+	if params.TaskType != nil {
+		task.TaskType = *params.TaskType
 	}
 	if params.ContextTags != nil {
 		task.ContextTags = params.ContextTags
 	}
-	if params.Urgency != nil {
-		task.Urgency = *params.Urgency
+	if params.Impact != nil {
+		task.Impact = *params.Impact
 	}
 	if params.ClearDeadline {
 		task.Deadline = nil
 	} else if params.Deadline != nil {
 		task.Deadline = params.Deadline
+	}
+	if params.ClearSoftDeadline {
+		task.SoftDeadline = nil
+	} else if params.SoftDeadline != nil {
+		task.SoftDeadline = params.SoftDeadline
+	}
+	if params.ClearScheduledDate {
+		task.ScheduledDate = nil
+	} else if params.ScheduledDate != nil {
+		task.ScheduledDate = params.ScheduledDate
+	}
+	if params.Effort != nil {
+		task.Effort = *params.Effort
+	}
+	if params.EstimatedMinutes != nil {
+		task.EstimatedMinutes = params.EstimatedMinutes
 	}
 	if params.IsRecurring != nil {
 		task.IsRecurring = *params.IsRecurring
@@ -138,21 +163,55 @@ func (s *TaskService) DeleteTask(ctx context.Context, userID, id string) error {
 }
 
 func (s *TaskService) CompleteTask(ctx context.Context, userID, id string) (*domain.Task, error) {
-	status := "done"
-	task, err := s.UpdateTask(ctx, userID, id, ports.UpdateTaskParams{Status: &status})
+	task, err := s.repo.GetByID(ctx, userID, id)
 	if err != nil {
 		return nil, err
 	}
+
+	var updatedTask *domain.Task
+	if task.TaskType == domain.TaskTypeDaily {
+		// Daily tasks: append today's completion entry, keep status=todo
+		today := time.Now().UTC().Format("2006-01-02")
+		// Replace existing entry for today or append
+		found := false
+		for i, e := range task.CompletionLog {
+			if e.Date == today {
+				task.CompletionLog[i].Done = true
+				found = true
+				break
+			}
+		}
+		if !found {
+			task.CompletionLog = append(task.CompletionLog, domain.CompletionEntry{Date: today, Done: true})
+		}
+		task.UpdatedAt = time.Now().UTC()
+		if err := s.repo.Update(ctx, task); err != nil {
+			return nil, fmt.Errorf("complete daily task: %w", err)
+		}
+		updatedTask = task
+	} else {
+		// One-time tasks: set status=done
+		status := "done"
+		updatedTask, err = s.UpdateTask(ctx, userID, id, ports.UpdateTaskParams{Status: &status})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if s.timeline != nil {
 		go func() {
 			_, _ = s.timeline.RecordEvent(context.Background(), timelineports.RecordEventParams{
 				UserID:    userID,
 				EventType: timelinedomain.EventTaskCompleted,
 				Domain:    "tasks",
-				EntityID:  &task.ID,
-				Payload:   map[string]any{"title": task.Title},
+				EntityID:  &updatedTask.ID,
+				Payload:   map[string]any{"title": updatedTask.Title},
 			})
 		}()
 	}
-	return task, nil
+	return updatedTask, nil
+}
+
+func (s *TaskService) GetTaskTags(ctx context.Context, userID string) ([]string, error) {
+	return s.repo.GetDistinctTags(ctx, userID)
 }
