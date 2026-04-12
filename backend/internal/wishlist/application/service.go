@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jairogloz/life-concierge/internal/wishlist/domain"
-	"github.com/jairogloz/life-concierge/internal/wishlist/ports"
 	timelinedomain "github.com/jairogloz/life-concierge/internal/timeline/domain"
 	timelineports "github.com/jairogloz/life-concierge/internal/timeline/ports"
+	"github.com/jairogloz/life-concierge/internal/wishlist/domain"
+	"github.com/jairogloz/life-concierge/internal/wishlist/ports"
 )
 
 // WishlistService implements ports.WishlistService.
