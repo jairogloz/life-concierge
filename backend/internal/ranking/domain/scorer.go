@@ -11,24 +11,24 @@ import (
 
 // ScoredTask pairs a task with its Execution Priority Score and score factors.
 type ScoredTask struct {
-	Task             *taskdomain.Task `json:"task"`
-	Score            float64          `json:"score"`
-	RoleWeight       float64          `json:"role_weight"`
-	GoalWeight       float64          `json:"goal_weight"`
-	RoleNeglectMult  float64          `json:"role_neglect_mult"`
-	Explanations     []string         `json:"explanations"`
+	Task            *taskdomain.Task `json:"task"`
+	Score           float64          `json:"score"`
+	RoleWeight      float64          `json:"role_weight"`
+	GoalWeight      float64          `json:"goal_weight"`
+	RoleNeglectMult float64          `json:"role_neglect_mult"`
+	Explanations    []string         `json:"explanations"`
 }
 
 // ScoreInput holds everything needed to compute a task score.
 type ScoreInput struct {
-	Task              *taskdomain.Task
-	RoleWeight        float64
-	GoalWeight        float64
+	Task       *taskdomain.Task
+	RoleWeight float64
+	GoalWeight float64
 	// RoleBalanceScore is the life balance score (0–1) for the task's primary role.
 	// 0 means the role is fully neglected; 1 means it is fully served.
 	// Leave as 0 to apply maximum neglect boost.
-	RoleBalanceScore  float64
-	Now               time.Time
+	RoleBalanceScore float64
+	Now              time.Time
 }
 
 // ComputeScore computes the Execution Priority Score (EPS) for a task.

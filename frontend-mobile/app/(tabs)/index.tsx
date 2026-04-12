@@ -49,7 +49,9 @@ function taskScheduledYMD(value: string | null | undefined): string | null {
 function isDailyDoneToday(task: TaskLike): boolean {
   if (getTaskType(task) !== "daily") return false;
   const today = ymd(new Date());
-  return (task.completion_log ?? []).some((entry) => entry.date === today && entry.done);
+  return (task.completion_log ?? []).some(
+    (entry) => entry.date === today && entry.done,
+  );
 }
 
 function TaskCard({
@@ -80,7 +82,9 @@ function TaskCard({
           <Text style={styles.score}>⚡ {score.toFixed(1)}</Text>
         </View>
         {taskType === "daily" && (
-          <Text style={isDailyDoneToday(task) ? styles.dailyDone : styles.dailyTodo}>
+          <Text
+            style={isDailyDoneToday(task) ? styles.dailyDone : styles.dailyTodo}
+          >
             {isDailyDoneToday(task) ? "● done today" : "○ not done today"}
           </Text>
         )}
@@ -175,12 +179,29 @@ export default function TodayScreen() {
   );
 
   const sectionedData: Array<
-    { type: "header"; id: string; title: string } | { type: "task"; id: string; item: ScoredTask }
+    | { type: "header"; id: string; title: string }
+    | { type: "task"; id: string; item: ScoredTask }
   > = [
-    { type: "header", id: "h-scheduled", title: `Scheduled for today (${scheduledToday.length})` },
-    ...scheduledToday.map((item) => ({ type: "task" as const, id: `s-${item.task.id}`, item })),
-    { type: "header", id: "h-backlog", title: `Anytime / backlog (${backlog.length})` },
-    ...backlog.map((item) => ({ type: "task" as const, id: `b-${item.task.id}`, item })),
+    {
+      type: "header",
+      id: "h-scheduled",
+      title: `Scheduled for today (${scheduledToday.length})`,
+    },
+    ...scheduledToday.map((item) => ({
+      type: "task" as const,
+      id: `s-${item.task.id}`,
+      item,
+    })),
+    {
+      type: "header",
+      id: "h-backlog",
+      title: `Anytime / backlog (${backlog.length})`,
+    },
+    ...backlog.map((item) => ({
+      type: "task" as const,
+      id: `b-${item.task.id}`,
+      item,
+    })),
   ];
 
   if (loading) {
@@ -194,7 +215,10 @@ export default function TodayScreen() {
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.filterBar}>
-        <TouchableOpacity style={styles.filterBtn} onPress={() => setFilterOpen(true)}>
+        <TouchableOpacity
+          style={styles.filterBtn}
+          onPress={() => setFilterOpen(true)}
+        >
           <Ionicons name="options-outline" size={16} color="#4f46e5" />
           <Text style={styles.filterBtnText}>Filters</Text>
         </TouchableOpacity>
@@ -235,7 +259,12 @@ export default function TodayScreen() {
         }
       />
 
-      <Modal visible={filterOpen} transparent animationType="slide" onRequestClose={() => setFilterOpen(false)}>
+      <Modal
+        visible={filterOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFilterOpen(false)}
+      >
         <View style={styles.sheetOverlay}>
           <View style={styles.sheet}>
             <View style={styles.sheetHeader}>
@@ -253,11 +282,19 @@ export default function TodayScreen() {
               ].map((mode) => (
                 <TouchableOpacity
                   key={mode.id}
-                  style={[styles.modeBtn, filterMode === mode.id && styles.modeBtnActive]}
-                  onPress={() => setFilterMode(mode.id as "all" | "role" | "tag")}
+                  style={[
+                    styles.modeBtn,
+                    filterMode === mode.id && styles.modeBtnActive,
+                  ]}
+                  onPress={() =>
+                    setFilterMode(mode.id as "all" | "role" | "tag")
+                  }
                 >
                   <Text
-                    style={[styles.modeBtnText, filterMode === mode.id && styles.modeBtnTextActive]}
+                    style={[
+                      styles.modeBtnText,
+                      filterMode === mode.id && styles.modeBtnTextActive,
+                    ]}
                   >
                     {mode.label}
                   </Text>
@@ -268,7 +305,10 @@ export default function TodayScreen() {
             {filterMode === "role" && (
               <ScrollView style={styles.sheetScroll}>
                 <TouchableOpacity
-                  style={[styles.optionRow, selectedRoleId === "" && styles.optionRowActive]}
+                  style={[
+                    styles.optionRow,
+                    selectedRoleId === "" && styles.optionRowActive,
+                  ]}
                   onPress={() => setSelectedRoleId("")}
                 >
                   <Text style={styles.optionText}>All roles</Text>
@@ -276,7 +316,10 @@ export default function TodayScreen() {
                 {roles.map((role) => (
                   <TouchableOpacity
                     key={role.id}
-                    style={[styles.optionRow, selectedRoleId === role.id && styles.optionRowActive]}
+                    style={[
+                      styles.optionRow,
+                      selectedRoleId === role.id && styles.optionRowActive,
+                    ]}
                     onPress={() => setSelectedRoleId(role.id)}
                   >
                     <Text style={styles.optionText}>{role.name}</Text>
@@ -298,7 +341,12 @@ export default function TodayScreen() {
                         style={[styles.tagChip, active && styles.tagChipActive]}
                         onPress={() => toggleTag(tag)}
                       >
-                        <Text style={[styles.tagChipText, active && styles.tagChipTextActive]}>
+                        <Text
+                          style={[
+                            styles.tagChipText,
+                            active && styles.tagChipTextActive,
+                          ]}
+                        >
                           #{tag}
                         </Text>
                       </TouchableOpacity>
@@ -308,7 +356,10 @@ export default function TodayScreen() {
               </View>
             )}
 
-            <TouchableOpacity style={styles.doneBtn} onPress={() => setFilterOpen(false)}>
+            <TouchableOpacity
+              style={styles.doneBtn}
+              onPress={() => setFilterOpen(false)}
+            >
               <Text style={styles.doneBtnText}>Done</Text>
             </TouchableOpacity>
           </View>

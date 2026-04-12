@@ -40,7 +40,9 @@ function DailyBriefCard() {
     return (
       <div className="mb-6 p-4 rounded-xl border border-indigo-200 bg-indigo-50">
         <div className="flex items-center justify-between">
-          <p className="font-semibold text-indigo-900">🤖 Daily Strategy Brief</p>
+          <p className="font-semibold text-indigo-900">
+            🤖 Daily Strategy Brief
+          </p>
           <button
             onClick={() => setCollapsed(false)}
             className="text-xs text-indigo-500 hover:text-indigo-700"
@@ -107,39 +109,43 @@ function DailyBriefCard() {
       </div>
       {collapsed ? null : (
         <>
-      {/* Top actions */}
-      <ol className="space-y-1.5">
-        {brief.top_actions.map((a) => (
-          <li key={a.priority} className="flex items-start gap-2 text-sm">
-            <span className="font-bold text-indigo-600 shrink-0">
-              {a.priority}.
-            </span>
-            <span className="text-gray-800">{a.description}</span>
-            <span className="ml-auto shrink-0 text-xs px-2 py-0.5 rounded-full bg-white text-indigo-600 border border-indigo-200">
-              {a.domain}
-            </span>
-          </li>
-        ))}
-      </ol>
-      {/* Alerts */}
-      <div className="grid grid-cols-2 gap-2">
-        {brief.finance_alert && (
-          <div className="rounded-lg bg-white border border-blue-200 p-2">
-            <p className="text-xs font-semibold text-blue-700">💰 Finance</p>
-            <p className="text-xs text-gray-600 mt-0.5">
-              {brief.finance_alert}
-            </p>
+          {/* Top actions */}
+          <ol className="space-y-1.5">
+            {brief.top_actions.map((a) => (
+              <li key={a.priority} className="flex items-start gap-2 text-sm">
+                <span className="font-bold text-indigo-600 shrink-0">
+                  {a.priority}.
+                </span>
+                <span className="text-gray-800">{a.description}</span>
+                <span className="ml-auto shrink-0 text-xs px-2 py-0.5 rounded-full bg-white text-indigo-600 border border-indigo-200">
+                  {a.domain}
+                </span>
+              </li>
+            ))}
+          </ol>
+          {/* Alerts */}
+          <div className="grid grid-cols-2 gap-2">
+            {brief.finance_alert && (
+              <div className="rounded-lg bg-white border border-blue-200 p-2">
+                <p className="text-xs font-semibold text-blue-700">
+                  💰 Finance
+                </p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {brief.finance_alert}
+                </p>
+              </div>
+            )}
+            {brief.health_nudge && (
+              <div className="rounded-lg bg-white border border-emerald-200 p-2">
+                <p className="text-xs font-semibold text-emerald-700">
+                  🌿 Wellbeing
+                </p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {brief.health_nudge}
+                </p>
+              </div>
+            )}
           </div>
-        )}
-        {brief.health_nudge && (
-          <div className="rounded-lg bg-white border border-emerald-200 p-2">
-            <p className="text-xs font-semibold text-emerald-700">
-              🌿 Wellbeing
-            </p>
-            <p className="text-xs text-gray-600 mt-0.5">{brief.health_nudge}</p>
-          </div>
-        )}
-      </div>
         </>
       )}
     </div>
@@ -158,7 +164,9 @@ export default function Today() {
   const [filterMode, setFilterMode] = useState<"all" | "role" | "tag">(
     (searchParams.get("mode") as "all" | "role" | "tag") || "all",
   );
-  const [selectedRoleId, setSelectedRoleId] = useState(searchParams.get("role") || "");
+  const [selectedRoleId, setSelectedRoleId] = useState(
+    searchParams.get("role") || "",
+  );
   const [selectedTags, setSelectedTags] = useState<string[]>(() => {
     const value = searchParams.get("tags") || "";
     return value ? value.split(",").filter(Boolean) : [];
@@ -225,7 +233,9 @@ export default function Today() {
   function isDailyDoneToday(task: ScoredTask["task"]): boolean {
     if (task.task_type !== "daily") return false;
     const today = ymd(new Date());
-    return (task.completion_log ?? []).some((entry) => entry.date === today && entry.done);
+    return (task.completion_log ?? []).some(
+      (entry) => entry.date === today && entry.done,
+    );
   }
 
   function toggleTag(tag: string) {
@@ -273,9 +283,7 @@ export default function Today() {
               {i + 1}
             </span>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-900 truncate">
-                {task.title}
-              </p>
+              <p className="font-medium text-gray-900 truncate">{task.title}</p>
               {task.description && (
                 <p className="text-sm text-gray-500 truncate mt-0.5">
                   {task.description}
@@ -298,7 +306,9 @@ export default function Today() {
                         : "bg-gray-50 text-gray-500 border-gray-200"
                     }`}
                   >
-                    {isDailyDoneToday(task) ? "● done today" : "○ not done today"}
+                    {isDailyDoneToday(task)
+                      ? "● done today"
+                      : "○ not done today"}
                   </span>
                 )}
                 {task.deadline && (
@@ -453,7 +463,9 @@ export default function Today() {
               Scheduled for today ({scheduledToday.length})
             </h2>
             {scheduledToday.length === 0 ? (
-              <p className="text-sm text-gray-400">No tasks scheduled for today.</p>
+              <p className="text-sm text-gray-400">
+                No tasks scheduled for today.
+              </p>
             ) : (
               renderTaskList(scheduledToday)
             )}
@@ -464,7 +476,9 @@ export default function Today() {
               Anytime / backlog ({backlog.length})
             </h2>
             {backlog.length === 0 ? (
-              <p className="text-sm text-gray-400">No backlog tasks for this filter.</p>
+              <p className="text-sm text-gray-400">
+                No backlog tasks for this filter.
+              </p>
             ) : (
               renderTaskList(backlog)
             )}

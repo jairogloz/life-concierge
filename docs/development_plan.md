@@ -647,6 +647,7 @@ _Goal: Mark items as bought, order items by heuristic priority, align currencies
 #### Heuristic buy-order ranking
 
 - ⬜ `backend/internal/wishlist/domain/ranker.go` — pure function, no I/O:
+
   ```
   item_roi    = impact / normalized_price   (price normalized to MXN using fixed rate)
   item_score  = item_roi × goal_weight × role_weight
@@ -654,6 +655,7 @@ _Goal: Mark items as bought, order items by heuristic priority, align currencies
 
   - Items without goal/role: use weight = 1.0
   - Price normalization: simple configurable USD→MXN rate (env var `USD_TO_MXN_RATE`, default 17.5)
+
 - ⬜ `GET /api/v1/wishlist/ranked` — returns items ordered by `item_score` with `rank` + `explanation`
 - ⬜ Frontend: Wishlist page shows ranked order with score badge; "Mark as bought" button per item → item slides out of list
 

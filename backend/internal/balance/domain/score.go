@@ -2,9 +2,9 @@ package domain
 
 // RoleBalanceScore holds the computed balance result for a single role.
 type RoleBalanceScore struct {
-	RoleID    string  `json:"role_id"`
-	RoleName  string  `json:"role_name"`
-	RoleColor string  `json:"role_color"`
+	RoleID    string `json:"role_id"`
+	RoleName  string `json:"role_name"`
+	RoleColor string `json:"role_color"`
 	// Actual is the summed task contribution value in the rolling window.
 	Actual float64 `json:"actual"`
 	// Expected is the proportional share of capacity for this role.
