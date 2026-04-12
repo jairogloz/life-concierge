@@ -412,14 +412,267 @@ _Goal: Record every significant life event; power adaptive recommendations._
 
 ---
 
-## Phase 12 — Gamification
+## Phase 12 — Task Model v2
+
+_Goal: Enrich the task domain with impact, effort, time estimation, scheduling, task types, and tag autocomplete. These fields are prerequisites for the proper scoring engine in Phase 13._
+
+### Schema changes
+
+- ⬜ `backend/migrations/000009_task_model_v2.up.sql`:
+  - Rename column `urgency` → `impact` (`SMALLINT NOT NULL DEFAULT 3`, range 1–5)
+  - Drop `commitment_type` ENUM, add `task_type` ENUM: `one_time | daily`
+  - Add `scheduled_date DATE` — when the user intends to work on it
+  - Keep existing `deadline` as the hard due-date; add `soft_deadline DATE` (warn-by date)
+  - Add `effort SMALLINT NOT NULL DEFAULT 3` (1–5 scale)
+  - Add `estimated_minutes INTEGER` — parsed from "1h 30m" syntax on the frontend
+  - For **daily** tasks: add `completion_log JSONB DEFAULT '[]'` — array of `{"date": "YYYY-MM-DD", "done": true/false}` entries to track per-day status for statistics
+- ⬜ `backend/migrations/000009_task_model_v2.down.sql`
+
+### Backend
+
+- ⬜ Update `tasks/domain/task.go` — new fields, `impact` label map (1=very low … 5=very high)
+- ⬜ Update `tasks/ports/*` — new create/update params (`TaskType`, `Impact`, `Effort`, `EstimatedMinutes`, `ScheduledDate`, `SoftDeadline`, `CompletionLog`)
+- ⬜ Update `tasks/adapters/postgres/repository.go` — read/write new columns
+- ⬜ Update `tasks/application/service.go`:
+  - `CompleteTask` for daily tasks: append today to `completion_log` rather than setting status=done
+  - Expose `GetTaskTags(ctx, userID) ([]string, error)` — distinct tags for autocomplete
+- ⬜ New endpoint `GET /api/v1/tasks/tags` — returns all distinct tags for the authenticated user (autocomplete source)
+
+### Ranking engine changes (scoring input only — formula improvements in Phase 13)
+
+- ⬜ Update scorer to use `impact` instead of `urgency`
+- ⬜ Factor `scheduled_date`: boost score on scheduled day; suppress score on other days (configurable)
+- ⬜ Factor `soft_deadline` / `deadline`: increase deadline pressure as both dates approach, with hard deadline having higher weight than soft
+- ⬜ ROI pre-computation: `roi = impact / sqrt(max(15, estimated_minutes))`; store as derived read field
+
+### API additions
+
+- ⬜ `GET /api/v1/tasks/tags` — distinct user tags (for autocomplete)
+
+### Frontend — Task form changes (web + mobile)
+
+- ⬜ Replace urgency input with **Impact** dropdown: 1 Very Low / 2 Low / 3 Medium / 4 High / 5 Very High
+- ⬜ Replace commitment type with **Task type** dropdown: `one_time` | `daily`
+- ⬜ Add **Effort** dropdown (1–5, same labels as impact)
+- ⬜ Add **Estimated time** text input — accepts "1h", "30m", "1h 30m"; parse on submit to `estimated_minutes`
+- ⬜ Add **Scheduled date** date picker
+- ⬜ **Due date** replaces the single "deadline" input; show both soft and hard deadline pickers
+- ⬜ **Tag autocomplete**: on typing, fetch `/tasks/tags` and show suggestions; if no match → "Create tag" option that adds it in place
+- ⬜ Daily tasks in the Today view: show streak/calendar dot indicators using `completion_log` data
+
+### Frontend — AI Inbox edit-in-place
+
+- ⬜ After AI returns a task suggestion, show all fields in an editable form (pre-populated)
+- ⬜ User can modify any field before accepting — NOT just accept/reject
+- ⬜ "Save & Accept" submits the edited version; "Reject" discards as before
+
+### ✅ Testable milestone: Create a daily task, complete it 3 days in a row, see streak dots; create an AI task, edit its title and due date before accepting
+
+---
+
+## Phase 13 — Execution Priority Score & Life Balance Score
+
+_Goal: Replace the simple ranking formula with two independent, explainable scoring systems that reflect real life tradeoffs between importance, effort, urgency, deadlines, role neglect, and goals._
+
+> These two systems are **conceptually separate** and must never be collapsed into one score.
+> - **Life Balance Score** answers: *"Which areas of life are under-served?"*
+> - **Execution Priority Score** answers: *"What is the right next action?"*
+
+### Domain model extensions (migrations)
+
+- ⬜ `backend/migrations/000010_scoring_extensions.up.sql`:
+  - `roles`: add `maintenance_floor FLOAT DEFAULT 0.1`, `decay_rate FLOAT DEFAULT 0.05`
+  - `goals`: add `weight FLOAT NOT NULL DEFAULT 1.0`, `target_horizon DATE`, `minimum_cadence INTEGER` (days)
+  - `tasks`: add `substantiveness_score FLOAT`, `resistance_score FLOAT`, `completion_quality FLOAT`, `completed_at TIMESTAMPTZ`
+- ⬜ `backend/migrations/000010_scoring_extensions.down.sql`
+
+### System 1 — Life Balance Score
+
+_Measures whether each role receives enough meaningful investment._
+
+#### Formula
+
+```
+life_balance_score(role) = actual_role_contribution / expected_role_contribution
+```
+
+#### Actual contribution (rolling 14-day window, completed tasks only)
+
+```
+task_contribution =
+  role_weight × goal_weight × impact × commitment_multiplier
+  × substantiveness_multiplier × completion_quality × timeliness_multiplier
+
+actual_role_contribution = Σ task_contribution
+```
+
+#### Expected contribution
+
+```
+expected = baseline_expected
+         + backlog_pressure_component  (capped at 1.5 × baseline)
+         + deadline_pressure_component
+         + maintenance_floor
+
+baseline_expected = normalized_role_weight × total_capacity_window
+backlog_pressure  = Σ (open_task_value × backlog_factor)
+deadline_pressure = Σ weighted_near_deadline_tasks
+```
+
+#### Implementation
+
+- ⬜ `backend/internal/balance/domain/score.go` — `RoleBalanceScore` struct with `Actual`, `Expected`, `RawScore`, `DisplayPct`, `Explanations`
+- ⬜ `backend/internal/balance/application/service.go` — pure computation, no I/O side effects
+- ⬜ `backend/internal/balance/ports/input.go` — `BalanceService` interface
+- ⬜ `backend/internal/balance/adapters/http/handler.go`
+- ⬜ `GET /api/v1/roles/balance` — returns balance score + explanation per role
+
+### System 2 — Execution Priority Score
+
+_Replaces the Phase 5 ranking engine. Uses Life Balance Score as input but remains a separate computation._
+
+#### Formula
+
+```
+task_value  = role_weight × goal_weight × impact × commitment_multiplier × substantiveness_multiplier
+effort_cost = sqrt(max(15, estimated_minutes))
+roi         = task_value / effort_cost
+
+role_neglect_multiplier = 1 + 0.8 × max(0, 1 − role_balance_score)
+
+execution_priority_score =
+  roi × role_neglect_multiplier × urgency_multiplier × deadline_multiplier
+  × commitment_multiplier × context_fit × energy_fit × resistance_bonus
+```
+
+#### Multiplier defaults
+
+| Factor | Value |
+|---|---|
+| commitment (one_time) | 1.25 |
+| daily | 0.9 |
+| substantiveness: trivial | 0.4 |
+| substantiveness: normal | 1.0 |
+| substantiveness: strategic | 1.3 |
+| completion_quality on_time | 1.0 |
+| completion_quality late | 0.9 |
+| completion_quality partial | 0.6 |
+| neglect k constant | 0.8 |
+| rolling window | 14 days |
+
+#### Implementation
+
+- ⬜ Update `backend/internal/ranking/domain/scorer.go` — replace old formula with full EPS formula
+- ⬜ Inject `BalanceService` into ranking service (used only to read balance scores, not to mutate)
+- ⬜ `GET /api/v1/tasks/ranked` — updated to return `execution_priority_score`, `rank`, `explanations` per task
+- ⬜ Explanation fields: human-readable strings, e.g. *"High ROI + Finance role neglected"*
+
+### Combined dashboard endpoint
+
+- ⬜ `GET /api/v1/dashboard/today` — returns `{ role_balance_summary, recommended_tasks }`
+
+### Extension points (scaffolded now, not implemented)
+
+- ⬜ `maintenance_decay` hook in balance service (interface stub)
+- ⬜ `anti_busywork_filter` hook in ranking service (interface stub)
+- ⬜ `deferral_penalty` field on tasks (column + zero-value for now)
+- ⬜ `consistency_bonus` calculation placeholder in balance service
+- ⬜ `context_match` and `energy_fit` accept enum input but default to 1.0
+
+### Tests
+
+- ⬜ Case 1: 1 completed task + 10 open vs 1 completed + 100 open → different balance ratios
+- ⬜ Case 2: role with zero recent activity but non-zero `maintenance_floor` → decay signal
+- ⬜ Case 3: short high-impact task outranks long low-impact task
+- ⬜ Case 4: urgent task vs neglected-role task comparison
+- ⬜ Case 5: deadline pressure increases expected contribution
+- ⬜ Case 6: ranking changes when `role_balance_score` changes
+
+### Frontend
+
+- ⬜ Radar chart role balance visualization on web Dashboard (using `recharts` or `d3`)
+- ⬜ Mobile Today tab: show role balance mini-bar per role
+- ⬜ Each ranked task shows its score + explanation tooltip/sheet
+
+### ✅ Testable milestone: Neglect a role for 5 days → balance score drops → tasks in that role rise in ranking
+
+---
+
+## Phase 14 — Today Dashboard v2 + Task Filtering
+
+_Goal: Make the Today view actionable with filters and a cleaner layout._
+
+- ⬜ Task filter bar: **All tasks** | **Per role** (dropdown) | **Per tag** (multi-select)
+- ⬜ Filter persists in URL query params for shareability
+- ⬜ Separate "scheduled for today" section from "anytime / backlog" section
+- ⬜ Daily tasks show today's completion dot (done / not-done)
+- ⬜ Mobile Today screen: same filter controls via bottom sheet
+- ⬜ DailyBriefCard: collapse / expand state persisted in `localStorage`
+
+### ✅ Testable milestone: Filter Today view by "Engineering" role, see only engineering tasks ranked
+
+---
+
+## Phase 15 — Calendar View
+
+_Goal: Visualize tasks across time — essential for scheduling work and spotting deadline clusters._
+
+- ⬜ **Month view**: grid of days; each day shows coloured task dots (by role colour); click day → day detail sheet
+- ⬜ **Week view**: column per day, time-blocked cards for tasks with `scheduled_date` today; unscheduled tasks in sidebar
+- ⬜ **Day view**: time-ordered list of scheduled tasks + unscheduled backlog
+- ⬜ Drag-and-drop to reschedule tasks (web only; mobile uses tap → date picker)
+- ⬜ Due date indicators (soft deadline = yellow, hard deadline = red)
+- ⬜ Route: `/calendar` (web), Calendar tab (mobile)
+- ⬜ Backend: no new endpoints needed — reuses `GET /api/v1/tasks` with date range filters added as query params (`scheduled_from`, `scheduled_to`, `due_from`, `due_to`)
+- ⬜ Add date range filter query params to `GET /api/v1/tasks`
+
+### ✅ Testable milestone: Drag a task from Monday to Wednesday, verify `scheduled_date` updates
+
+---
+
+## Phase 16 — Wishlist v2 + Currency Enhancements
+
+_Goal: Mark items as bought, order items by heuristic priority, align currencies across the app._
+
+### Wishlist enhancements
+
+- ⬜ `backend/migrations/000011_wishlist_v2.up.sql`:
+  - Add `bought_at TIMESTAMPTZ` (nullable — set when marked bought)
+  - Rename `importance` → `impact` `SMALLINT DEFAULT 3` (1–5, matching task scale)
+  - Change `currency` column default to `'MXN'`
+- ⬜ `POST /api/v1/wishlist/:id/mark-bought` — sets `bought_at = now()`, item hidden from active list
+- ⬜ `GET  /api/v1/wishlist` — exclude bought items by default; accept `?include_bought=true`
+
+#### Heuristic buy-order ranking
+
+- ⬜ `backend/internal/wishlist/domain/ranker.go` — pure function, no I/O:
+  ```
+  item_roi    = impact / normalized_price   (price normalized to MXN using fixed rate)
+  item_score  = item_roi × goal_weight × role_weight
+  ```
+  - Items without goal/role: use weight = 1.0
+  - Price normalization: simple configurable USD→MXN rate (env var `USD_TO_MXN_RATE`, default 17.5)
+- ⬜ `GET /api/v1/wishlist/ranked` — returns items ordered by `item_score` with `rank` + `explanation`
+- ⬜ Frontend: Wishlist page shows ranked order with score badge; "Mark as bought" button per item → item slides out of list
+
+### Currency dropdown (app-wide)
+
+- ⬜ Frontend: all currency inputs (finance transactions, wishlist items) use a dropdown: **MXN** (default) | **USD**
+- ⬜ Backend `CreateTransaction` and `CreateItem` accept `currency` as before; frontend ensures it's always populated from the dropdown
+- ⬜ Finance summary `GET /api/v1/finance/summary`: display totals in MXN; USD balances converted using same rate for display only
+
+### ✅ Testable milestone: Add 5 wishlist items at different prices and impact levels; ranked order reflects ROI; mark cheapest bought → disappears from list
+
+---
+
+## Phase 17 — Gamification
 
 _Goal: Engagement layer without distorting real priorities._
 
-- ⬜ `backend/migrations/0010_create_gamification.up.sql` — `user_streaks`, `xp_log`, `achievements`
-- ⬜ Consistency bonus calculation (feeds into ranking engine's `consistency_bonus`)
+- ⬜ `backend/migrations/000012_create_gamification.up.sql` — `user_streaks`, `xp_log`, `achievements`
+- ⬜ Consistency bonus calculation (feeds into Phase 13 `consistency_bonus` extension point)
 - ⬜ Streak tracking per role and globally
-- ⬜ XP awards: task completion, workout logged, budget maintained
+- ⬜ XP awards: task completion, expense logged, wishlist item evaluated
 - ⬜ Achievement unlock system ("7-day streak", "first investment logged", etc.)
 - ⬜ `GET /api/v1/gamification/profile`
 - ⬜ Gamification widgets on Today dashboard + mobile home screen
@@ -428,13 +681,13 @@ _Goal: Engagement layer without distorting real priorities._
 
 ---
 
-## Phase 13 — Health Domain (Deferred)
+## Phase 18 — Health Domain (Deferred)
 
 _Goal: Log workouts and body metrics; framework for future wearable integrations._
 
 ### Database
 
-- ⬜ `backend/migrations/0008_create_health.up.sql`:
+- ⬜ `backend/migrations/000013_create_health.up.sql`:
   - `workout_sessions` — id, user_id, date, duration_minutes, intensity, goal_alignment, notes
   - `exercise_entries` — id, session_id, exercise_name, details JSONB
   - `body_metrics` — id, user_id, date, weight_kg, body_fat_pct, waist_cm, vo2_estimate, resting_hr
@@ -497,5 +750,10 @@ _Goal: Log workouts and body metrics; framework for future wearable integrations
 | 9     | Finance domain                         | ✅     |
 | 10    | Wishlist decision engine               | ✅     |
 | 11    | Timeline + daily strategy agent        | ✅     |
-| 12    | Gamification                           | ⬜     |
-| 13    | Health domain (deferred)               | ⬜     |
+| 12    | Task Model v2 (impact, effort, types)  | ⬜     |
+| 13    | Execution Priority + Life Balance Score| ⬜     |
+| 14    | Today Dashboard v2 + Task Filtering    | ⬜     |
+| 15    | Calendar View                          | ⬜     |
+| 16    | Wishlist v2 + Currency Enhancements    | ⬜     |
+| 17    | Gamification                           | ⬜     |
+| 18    | Health domain (deferred)               | ⬜     |
