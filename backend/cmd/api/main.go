@@ -30,6 +30,13 @@ import (
 	rankingpostgres "github.com/jairogloz/life-concierge/internal/ranking/adapters/postgres"
 	rankingapp "github.com/jairogloz/life-concierge/internal/ranking/application"
 
+	balancehttp "github.com/jairogloz/life-concierge/internal/balance/adapters/http"
+	balancepostgres "github.com/jairogloz/life-concierge/internal/balance/adapters/postgres"
+	balanceapp "github.com/jairogloz/life-concierge/internal/balance/application"
+
+	dashboardhttp "github.com/jairogloz/life-concierge/internal/dashboard/adapters/http"
+	dashboardapp "github.com/jairogloz/life-concierge/internal/dashboard/application"
+
 	inboxcontext "github.com/jairogloz/life-concierge/internal/ai_suggestions/adapters/context"
 	inboxhttp "github.com/jairogloz/life-concierge/internal/ai_suggestions/adapters/http"
 	inboxopenai "github.com/jairogloz/life-concierge/internal/ai_suggestions/adapters/openai"
@@ -111,7 +118,15 @@ func main() {
 	tasksService := tasksapp.NewTaskService(tasksRepo)
 
 	rankingRepo := rankingpostgres.NewRankingRepository(db)
-	rankingService := rankingapp.NewRankingService(rankingRepo)
+
+	// Balance (Life Balance Score)
+	balanceRepo := balancepostgres.NewBalanceRepository(db)
+	balanceService := balanceapp.NewBalanceService(balanceRepo)
+
+	rankingService := rankingapp.NewRankingService(rankingRepo, balanceService)
+
+	// Dashboard
+	dashboardService := dashboardapp.NewDashboardService(balanceService, rankingService)
 
 	// AI inbox
 	openaiClient := sharedai.NewOpenAIClient(cfg.OpenAIAPIKey)
@@ -156,6 +171,8 @@ func main() {
 	// ranking and inbox registered BEFORE tasks so /tasks/ranked and /tasks/inbox
 	// are matched as static paths before the parametric /tasks/:id route.
 	rankinghttp.RegisterRoutes(api, rankingService)
+	balancehttp.RegisterRoutes(api, balanceService)
+	dashboardhttp.RegisterRoutes(api, dashboardService)
 	inboxhttp.RegisterRoutes(api, inboxService)
 	taskshttp.RegisterRoutes(api, tasksService)
 	financehttp.RegisterRoutes(api, financeService)

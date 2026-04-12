@@ -170,7 +170,7 @@ export default function Today() {
         </div>
       ) : (
         <ol className="space-y-3">
-          {ranked.map(({ task, score }, i) => (
+          {ranked.map(({ task, score, explanations }, i) => (
             <li
               key={task.id}
               className="flex items-start gap-3 bg-white rounded-xl border border-gray-200 px-4 py-3 shadow-sm"
@@ -207,6 +207,15 @@ export default function Today() {
                       className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-600"
                     >
                       #{tag}
+                    </span>
+                  ))}
+                  {(explanations ?? []).map((ex, j) => (
+                    <span
+                      key={j}
+                      className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500 border border-indigo-100"
+                      title="Score factor"
+                    >
+                      {ex}
                     </span>
                   ))}
                 </div>

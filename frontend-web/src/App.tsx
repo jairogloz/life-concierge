@@ -3,6 +3,7 @@ import { SignIn, SignUp } from "@clerk/clerk-react";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Today from "./pages/Today";
+import Dashboard from "./pages/Dashboard";
 import Roles from "./pages/Roles";
 import Goals from "./pages/Goals";
 import Tasks from "./pages/Tasks";
@@ -39,6 +40,7 @@ export default function App() {
           }
         >
           <Route index element={<Today />} />
+          <Route path="dashboard" element={<Dashboard />} />
           <Route path="roles" element={<Roles />} />
           <Route path="goals" element={<Goals />} />
           <Route path="tasks" element={<Tasks />} />

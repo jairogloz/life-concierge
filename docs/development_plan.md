@@ -522,11 +522,11 @@ deadline_pressure = Σ weighted_near_deadline_tasks
 
 #### Implementation
 
-- ⬜ `backend/internal/balance/domain/score.go` — `RoleBalanceScore` struct with `Actual`, `Expected`, `RawScore`, `DisplayPct`, `Explanations`
-- ⬜ `backend/internal/balance/application/service.go` — pure computation, no I/O side effects
-- ⬜ `backend/internal/balance/ports/input.go` — `BalanceService` interface
-- ⬜ `backend/internal/balance/adapters/http/handler.go`
-- ⬜ `GET /api/v1/roles/balance` — returns balance score + explanation per role
+- ✅ `backend/internal/balance/domain/score.go` — `RoleBalanceScore` struct with `Actual`, `Expected`, `RawScore`, `DisplayPct`, `Explanations`
+- ✅ `backend/internal/balance/application/service.go` — pure computation, no I/O side effects
+- ✅ `backend/internal/balance/ports/input.go` — `BalanceService` interface
+- ✅ `backend/internal/balance/adapters/http/handler.go`
+- ✅ `GET /api/v1/roles/balance` — returns balance score + explanation per role
 
 ### System 2 — Execution Priority Score
 
@@ -563,14 +563,14 @@ execution_priority_score =
 
 #### Implementation
 
-- ⬜ Update `backend/internal/ranking/domain/scorer.go` — replace old formula with full EPS formula
-- ⬜ Inject `BalanceService` into ranking service (used only to read balance scores, not to mutate)
-- ⬜ `GET /api/v1/tasks/ranked` — updated to return `execution_priority_score`, `rank`, `explanations` per task
-- ⬜ Explanation fields: human-readable strings, e.g. _"High ROI + Finance role neglected"_
+- ✅ Update `backend/internal/ranking/domain/scorer.go` — replace old formula with full EPS formula
+- ✅ Inject `BalanceService` into ranking service (used only to read balance scores, not to mutate)
+- ✅ `GET /api/v1/tasks/ranked` — updated to return `execution_priority_score`, `rank`, `explanations` per task
+- ✅ Explanation fields: human-readable strings, e.g. _"High ROI + Finance role neglected"_
 
 ### Combined dashboard endpoint
 
-- ⬜ `GET /api/v1/dashboard/today` — returns `{ role_balance_summary, recommended_tasks }`
+- ✅ `GET /api/v1/dashboard/today` — returns `{ role_balance_summary, recommended_tasks }`
 
 ### Extension points (scaffolded now, not implemented)
 
@@ -582,18 +582,18 @@ execution_priority_score =
 
 ### Tests
 
-- ⬜ Case 1: 1 completed task + 10 open vs 1 completed + 100 open → different balance ratios
-- ⬜ Case 2: role with zero recent activity but non-zero `maintenance_floor` → decay signal
-- ⬜ Case 3: short high-impact task outranks long low-impact task
-- ⬜ Case 4: urgent task vs neglected-role task comparison
-- ⬜ Case 5: deadline pressure increases expected contribution
-- ⬜ Case 6: ranking changes when `role_balance_score` changes
+- ✅ Case 1: 1 completed task + 10 open vs 1 completed + 100 open → different balance ratios
+- ✅ Case 2: role with zero recent activity but non-zero `maintenance_floor` → decay signal
+- ✅ Case 3: short high-impact task outranks long low-impact task
+- ✅ Case 4: urgent task vs neglected-role task comparison
+- ✅ Case 5: deadline pressure increases expected contribution
+- ✅ Case 6: ranking changes when `role_balance_score` changes
 
 ### Frontend
 
-- ⬜ Radar chart role balance visualization on web Dashboard (using `recharts` or `d3`)
+- ✅ Radar chart role balance visualization on web Dashboard (using `recharts` or `d3`)
 - ⬜ Mobile Today tab: show role balance mini-bar per role
-- ⬜ Each ranked task shows its score + explanation tooltip/sheet
+- ✅ Each ranked task shows its score + explanation tooltip/sheet
 
 ### ✅ Testable milestone: Neglect a role for 5 days → balance score drops → tasks in that role rise in ranking
 
@@ -753,7 +753,7 @@ _Goal: Log workouts and body metrics; framework for future wearable integrations
 | 10    | Wishlist decision engine                | ✅     |
 | 11    | Timeline + daily strategy agent         | ✅     |
 | 12    | Task Model v2 (impact, effort, types)   | ✅     |
-| 13    | Execution Priority + Life Balance Score | ⬜     |
+| 13    | Execution Priority + Life Balance Score | ✅     |
 | 14    | Today Dashboard v2 + Task Filtering     | ⬜     |
 | 15    | Calendar View                           | ⬜     |
 | 16    | Wishlist v2 + Currency Enhancements     | ⬜     |

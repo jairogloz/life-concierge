@@ -56,6 +56,25 @@ export interface Task {
 export interface ScoredTask {
   task: Task;
   score: number;
+  role_weight: number;
+  goal_weight: number;
+  role_neglect_mult: number;
+  explanations: string[];
+}
+
+export interface RoleBalanceScore {
+  role_id: string;
+  role_name: string;
+  role_color: string;
+  actual: number;
+  expected: number;
+  balance_score: number; // 0–1
+  display_pct: number;   // 0–100
+}
+
+export interface TodaySummary {
+  role_balance_summary: RoleBalanceScore[];
+  recommended_tasks: ScoredTask[];
 }
 
 export interface TaskSuggestion {

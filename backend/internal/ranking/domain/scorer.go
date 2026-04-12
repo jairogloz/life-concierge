@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"math"
 	"sort"
 	"time"
@@ -8,26 +9,40 @@ import (
 	taskdomain "github.com/jairogloz/life-concierge/internal/tasks/domain"
 )
 
-// ScoredTask pairs a task with its computed priority score and contributing weights.
+// ScoredTask pairs a task with its Execution Priority Score and score factors.
 type ScoredTask struct {
-	Task       *taskdomain.Task `json:"task"`
-	Score      float64          `json:"score"`
-	RoleWeight float64          `json:"role_weight"`
-	GoalWeight float64          `json:"goal_weight"`
+	Task             *taskdomain.Task `json:"task"`
+	Score            float64          `json:"score"`
+	RoleWeight       float64          `json:"role_weight"`
+	GoalWeight       float64          `json:"goal_weight"`
+	RoleNeglectMult  float64          `json:"role_neglect_mult"`
+	Explanations     []string         `json:"explanations"`
 }
 
 // ScoreInput holds everything needed to compute a task score.
 type ScoreInput struct {
-	Task       *taskdomain.Task
-	RoleWeight float64
-	GoalWeight float64
-	Now        time.Time
+	Task              *taskdomain.Task
+	RoleWeight        float64
+	GoalWeight        float64
+	// RoleBalanceScore is the life balance score (0–1) for the task's primary role.
+	// 0 means the role is fully neglected; 1 means it is fully served.
+	// Leave as 0 to apply maximum neglect boost.
+	RoleBalanceScore  float64
+	Now               time.Time
 }
 
-// ComputeScore computes the priority score for a task.
-// Formula: roi = (roleW * goalW * impact * taskTypeMult) / sqrt(max(15, estimatedMinutes))
-// Multiplied by deadlinePressure and scheduledMult.
-func ComputeScore(in ScoreInput) float64 {
+// ComputeScore computes the Execution Priority Score (EPS) for a task.
+//
+// Formula:
+//
+//	roi = (roleW × goalW × impact × taskTypeMult) / sqrt(max(15, estMins))
+//	role_neglect_mult = 1 + 0.8 × max(0, 1 − role_balance_score)
+//	EPS = roi × role_neglect_mult × deadline_pressure × scheduled_mult
+//
+// The function also returns a slice of human-readable explanation strings.
+func ComputeScore(in ScoreInput) (float64, []string) {
+	var explanations []string
+
 	roleW := in.RoleWeight
 	if roleW <= 0 {
 		roleW = 1.0
@@ -50,11 +65,30 @@ func ComputeScore(in ScoreInput) float64 {
 
 	taskValue := roleW * goalW * float64(in.Task.Impact) * taskMult
 	roi := taskValue / effortCost
+	explanations = append(explanations, fmt.Sprintf("ROI %.2f (impact=%d, %.0fmin)", roi, in.Task.Impact, estMins))
+
+	// Role neglect multiplier: tasks in under-served roles get a boost.
+	balanceScore := in.RoleBalanceScore
+	neglectMult := 1.0 + 0.8*math.Max(0, 1-balanceScore)
+	if neglectMult > 1.0 {
+		explanations = append(explanations, fmt.Sprintf("Role neglect ×%.2f (balance=%.0f%%)", neglectMult, balanceScore*100))
+	}
 
 	dp := computeDeadlinePressure(in.Task.Deadline, in.Task.SoftDeadline, in.Now)
-	scheduledMult := computeScheduledMult(in.Task.ScheduledDate, in.Now)
+	if dp > 1.0 {
+		explanations = append(explanations, fmt.Sprintf("Deadline pressure ×%.2f", dp))
+	}
 
-	return roi * dp * scheduledMult
+	scheduledMult := computeScheduledMult(in.Task.ScheduledDate, in.Now)
+	switch {
+	case scheduledMult > 1.0:
+		explanations = append(explanations, "Scheduled today ×1.5")
+	case scheduledMult < 1.0:
+		explanations = append(explanations, "Scheduled future ×0.5")
+	}
+
+	score := roi * neglectMult * dp * scheduledMult
+	return score, explanations
 }
 
 // computeDeadlinePressure returns a multiplier >= 1.0 based on how close either
@@ -119,15 +153,20 @@ func computeScheduledMult(scheduledDate *time.Time, now time.Time) float64 {
 	}
 }
 
-// RankTasks scores and sorts tasks by descending priority score.
+// RankTasks scores and sorts tasks by descending Execution Priority Score.
 func RankTasks(inputs []ScoreInput) []*ScoredTask {
 	result := make([]*ScoredTask, 0, len(inputs))
 	for _, in := range inputs {
+		score, explanations := ComputeScore(in)
+		balanceScore := in.RoleBalanceScore
+		neglectMult := 1.0 + 0.8*math.Max(0, 1-balanceScore)
 		result = append(result, &ScoredTask{
-			Task:       in.Task,
-			Score:      ComputeScore(in),
-			RoleWeight: in.RoleWeight,
-			GoalWeight: in.GoalWeight,
+			Task:            in.Task,
+			Score:           score,
+			RoleWeight:      in.RoleWeight,
+			GoalWeight:      in.GoalWeight,
+			RoleNeglectMult: neglectMult,
+			Explanations:    explanations,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool {

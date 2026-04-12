@@ -3,6 +3,7 @@ import { UserButton } from "@clerk/clerk-react";
 
 const nav = [
   { to: "/", label: "🏠 Today" },
+  { to: "/dashboard", label: "📊 Dashboard" },
   { to: "/roles", label: "🎭 Roles" },
   { to: "/goals", label: "🎯 Goals" },
   { to: "/tasks", label: "✅ Tasks" },
