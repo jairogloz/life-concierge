@@ -44,10 +44,16 @@ function monthGridEnd(date: Date): Date {
 
 function dueLabel(task: Task): { label: string; className: string } | null {
   if (task.deadline) {
-    return { label: "hard deadline", className: "bg-red-50 text-red-700 border border-red-200" };
+    return {
+      label: "hard deadline",
+      className: "bg-red-50 text-red-700 border border-red-200",
+    };
   }
   if (task.soft_deadline) {
-    return { label: "soft deadline", className: "bg-amber-50 text-amber-700 border border-amber-200" };
+    return {
+      label: "soft deadline",
+      className: "bg-amber-50 text-amber-700 border border-amber-200",
+    };
   }
   return null;
 }
@@ -78,7 +84,11 @@ function TaskCard({
             one-time
           </span>
         )}
-        {due && <span className={`px-1.5 py-0.5 rounded-full ${due.className}`}>{due.label}</span>}
+        {due && (
+          <span className={`px-1.5 py-0.5 rounded-full ${due.className}`}>
+            {due.label}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -202,12 +212,29 @@ export default function Calendar() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Month / Week / Day planning and scheduling</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Month / Week / Day planning and scheduling
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={prev} className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm hover:bg-gray-50">←</button>
-          <button onClick={() => setAnchor(new Date())} className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm hover:bg-gray-50">Today</button>
-          <button onClick={next} className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm hover:bg-gray-50">→</button>
+          <button
+            onClick={prev}
+            className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm hover:bg-gray-50"
+          >
+            ←
+          </button>
+          <button
+            onClick={() => setAnchor(new Date())}
+            className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm hover:bg-gray-50"
+          >
+            Today
+          </button>
+          <button
+            onClick={next}
+            className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm hover:bg-gray-50"
+          >
+            →
+          </button>
         </div>
       </div>
 
@@ -234,9 +261,13 @@ export default function Calendar() {
           {view === "month" && (
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="grid grid-cols-7 text-xs text-gray-500 mb-2">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label) => (
-                  <div key={label} className="px-2 py-1 font-semibold">{label}</div>
-                ))}
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                  (label) => (
+                    <div key={label} className="px-2 py-1 font-semibold">
+                      {label}
+                    </div>
+                  ),
+                )}
               </div>
               <div className="grid grid-cols-7 gap-2">
                 {monthDays.map((day) => {
@@ -253,7 +284,9 @@ export default function Calendar() {
                           : "border-gray-100 bg-gray-50"
                       }`}
                     >
-                      <p className={`text-xs ${isCurrentMonth ? "text-gray-700" : "text-gray-400"}`}>
+                      <p
+                        className={`text-xs ${isCurrentMonth ? "text-gray-700" : "text-gray-400"}`}
+                      >
                         {day.getDate()}
                       </p>
                       <div className="mt-1 flex flex-wrap gap-1">
@@ -269,7 +302,9 @@ export default function Calendar() {
                           />
                         ))}
                         {items.length > 5 && (
-                          <span className="text-[10px] text-gray-400">+{items.length - 5}</span>
+                          <span className="text-[10px] text-gray-400">
+                            +{items.length - 5}
+                          </span>
                         )}
                       </div>
                     </button>
@@ -282,13 +317,21 @@ export default function Calendar() {
           {view === "week" && (
             <div className="grid grid-cols-8 gap-3">
               <div className="rounded-xl border border-gray-200 bg-white p-3">
-                <p className="text-xs font-semibold text-gray-500 mb-2">Unscheduled</p>
+                <p className="text-xs font-semibold text-gray-500 mb-2">
+                  Unscheduled
+                </p>
                 <div className="space-y-2 max-h-[70vh] overflow-y-auto">
                   {unscheduled.map((task) => (
-                    <TaskCard key={task.id} task={task} onDragStart={setDraggingTaskID} />
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onDragStart={setDraggingTaskID}
+                    />
                   ))}
                   {unscheduled.length === 0 && (
-                    <p className="text-xs text-gray-400">No unscheduled backlog.</p>
+                    <p className="text-xs text-gray-400">
+                      No unscheduled backlog.
+                    </p>
                   )}
                 </div>
               </div>
@@ -308,11 +351,19 @@ export default function Calendar() {
                     }}
                   >
                     <p className="text-xs font-semibold text-gray-500 mb-2">
-                      {day.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                      {day.toLocaleDateString(undefined, {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      })}
                     </p>
                     <div className="space-y-2 max-h-[70vh] overflow-y-auto">
                       {items.map((task) => (
-                        <TaskCard key={task.id} task={task} onDragStart={setDraggingTaskID} />
+                        <TaskCard
+                          key={task.id}
+                          task={task}
+                          onDragStart={setDraggingTaskID}
+                        />
                       ))}
                     </div>
                   </div>
@@ -336,19 +387,25 @@ export default function Calendar() {
                     <TaskCard key={task.id} task={task} />
                   ))}
                   {(tasksByDate.get(selectedYmd) ?? []).length === 0 && (
-                    <p className="text-sm text-gray-400">No tasks scheduled for this day.</p>
+                    <p className="text-sm text-gray-400">
+                      No tasks scheduled for this day.
+                    </p>
                   )}
                 </div>
               </div>
 
               <div className="rounded-xl border border-gray-200 bg-white p-4">
-                <p className="text-xs font-semibold text-gray-500 mb-2">Unscheduled backlog</p>
+                <p className="text-xs font-semibold text-gray-500 mb-2">
+                  Unscheduled backlog
+                </p>
                 <div className="space-y-2 max-h-[70vh] overflow-y-auto">
                   {unscheduled.map((task) => (
                     <TaskCard key={task.id} task={task} />
                   ))}
                   {unscheduled.length === 0 && (
-                    <p className="text-xs text-gray-400">No unscheduled tasks.</p>
+                    <p className="text-xs text-gray-400">
+                      No unscheduled tasks.
+                    </p>
                   )}
                 </div>
               </div>
@@ -358,7 +415,10 @@ export default function Calendar() {
       )}
 
       {selectedDay && (
-        <div className="fixed inset-0 z-30 bg-black/20 flex justify-end" onClick={() => setSelectedDay(null)}>
+        <div
+          className="fixed inset-0 z-30 bg-black/20 flex justify-end"
+          onClick={() => setSelectedDay(null)}
+        >
           <div
             className="w-full max-w-md h-full bg-white border-l border-gray-200 p-4 overflow-y-auto"
             onClick={(e) => e.stopPropagation()}

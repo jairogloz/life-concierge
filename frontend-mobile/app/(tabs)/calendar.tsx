@@ -94,7 +94,9 @@ export default function CalendarScreen() {
           api.get<{ data: TaskItem[] }>("/tasks?status=todo"),
         ]);
         setScheduled(scheduledRes.data.data ?? []);
-        setUnscheduled((allTodoRes.data.data ?? []).filter((task) => !task.scheduled_date));
+        setUnscheduled(
+          (allTodoRes.data.data ?? []).filter((task) => !task.scheduled_date),
+        );
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -143,13 +145,23 @@ export default function CalendarScreen() {
         : undefined;
 
     return (
-      <TouchableOpacity key={task.id} style={styles.card} onPress={() => setSelected(task)}>
+      <TouchableOpacity
+        key={task.id}
+        style={styles.card}
+        onPress={() => setSelected(task)}
+      >
         <Text style={styles.title} numberOfLines={1}>
           {task.title}
         </Text>
         <View style={styles.metaRow}>
-          <Text style={styles.type}>{task.task_type === "daily" ? "daily" : "one-time"}</Text>
-          {dueClass && <Text style={dueClass}>{task.deadline ? "hard deadline" : "soft deadline"}</Text>}
+          <Text style={styles.type}>
+            {task.task_type === "daily" ? "daily" : "one-time"}
+          </Text>
+          {dueClass && (
+            <Text style={dueClass}>
+              {task.deadline ? "hard deadline" : "soft deadline"}
+            </Text>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -173,16 +185,45 @@ export default function CalendarScreen() {
               onPress={() => setView(mode)}
               style={[styles.modeBtn, view === mode && styles.modeBtnActive]}
             >
-              <Text style={[styles.modeText, view === mode && styles.modeTextActive]}>{mode}</Text>
+              <Text
+                style={[
+                  styles.modeText,
+                  view === mode && styles.modeTextActive,
+                ]}
+              >
+                {mode}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
         <View style={styles.navRow}>
-          <TouchableOpacity onPress={() => setAnchor(addDays(anchor, view === "month" ? -30 : view === "week" ? -7 : -1))}>
+          <TouchableOpacity
+            onPress={() =>
+              setAnchor(
+                addDays(
+                  anchor,
+                  view === "month" ? -30 : view === "week" ? -7 : -1,
+                ),
+              )
+            }
+          >
             <Ionicons name="chevron-back" size={20} color="#4b5563" />
           </TouchableOpacity>
-          <Text style={styles.rangeLabel}>{range.from === range.to ? range.from : `${range.from} → ${range.to}`}</Text>
-          <TouchableOpacity onPress={() => setAnchor(addDays(anchor, view === "month" ? 30 : view === "week" ? 7 : 1))}>
+          <Text style={styles.rangeLabel}>
+            {range.from === range.to
+              ? range.from
+              : `${range.from} → ${range.to}`}
+          </Text>
+          <TouchableOpacity
+            onPress={() =>
+              setAnchor(
+                addDays(
+                  anchor,
+                  view === "month" ? 30 : view === "week" ? 7 : 1,
+                ),
+              )
+            }
+          >
             <Ionicons name="chevron-forward" size={20} color="#4b5563" />
           </TouchableOpacity>
         </View>
@@ -194,10 +235,16 @@ export default function CalendarScreen() {
             ? currentDayTasks
             : view === "week"
               ? weekDays.flatMap((d) => [
-                  { id: `h-${ymd(d)}`, title: ymd(d), task_type: "one_time" as const },
+                  {
+                    id: `h-${ymd(d)}`,
+                    title: ymd(d),
+                    task_type: "one_time" as const,
+                  },
                   ...(dateBuckets.get(ymd(d)) ?? []),
                 ])
-              : Array.from({ length: 42 }, (_, i) => addDays(monthGridStart(anchor), i)).map((d) => ({
+              : Array.from({ length: 42 }, (_, i) =>
+                  addDays(monthGridStart(anchor), i),
+                ).map((d) => ({
                   id: `m-${ymd(d)}`,
                   title: `${ymd(d)} · ${(dateBuckets.get(ymd(d)) ?? []).length} tasks`,
                   task_type: "one_time" as const,
@@ -223,7 +270,9 @@ export default function CalendarScreen() {
         }}
         ListHeaderComponent={
           <View style={styles.unscheduledBox}>
-            <Text style={styles.unscheduledTitle}>Unscheduled tasks ({unscheduled.length})</Text>
+            <Text style={styles.unscheduledTitle}>
+              Unscheduled tasks ({unscheduled.length})
+            </Text>
             <View style={styles.unscheduledWrap}>
               {unscheduled.slice(0, 8).map((task) => (
                 <TouchableOpacity
@@ -231,7 +280,9 @@ export default function CalendarScreen() {
                   style={styles.unscheduledChip}
                   onPress={() => setSelected(task)}
                 >
-                  <Text style={styles.unscheduledChipText} numberOfLines={1}>{task.title}</Text>
+                  <Text style={styles.unscheduledChipText} numberOfLines={1}>
+                    {task.title}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -239,7 +290,12 @@ export default function CalendarScreen() {
         }
       />
 
-      <Modal visible={Boolean(selected)} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
+      <Modal
+        visible={Boolean(selected)}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelected(null)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
@@ -248,7 +304,9 @@ export default function CalendarScreen() {
                 <Ionicons name="close" size={20} color="#6b7280" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.modalTask} numberOfLines={2}>{selected?.title}</Text>
+            <Text style={styles.modalTask} numberOfLines={2}>
+              {selected?.title}
+            </Text>
             <Text style={styles.modalHint}>Pick date (YYYY-MM-DD)</Text>
             <TextInput
               value={selectedDate}
@@ -258,9 +316,24 @@ export default function CalendarScreen() {
               placeholder="2026-04-15"
             />
             <View style={styles.quickRow}>
-              <TouchableOpacity onPress={() => setSelectedDate(ymd(new Date()))} style={styles.quickBtn}><Text style={styles.quickBtnText}>Today</Text></TouchableOpacity>
-              <TouchableOpacity onPress={() => setSelectedDate(ymd(addDays(new Date(), 1)))} style={styles.quickBtn}><Text style={styles.quickBtnText}>Tomorrow</Text></TouchableOpacity>
-              <TouchableOpacity onPress={() => setSelectedDate(ymd(addDays(new Date(), 7)))} style={styles.quickBtn}><Text style={styles.quickBtnText}>+7 days</Text></TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setSelectedDate(ymd(new Date()))}
+                style={styles.quickBtn}
+              >
+                <Text style={styles.quickBtnText}>Today</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setSelectedDate(ymd(addDays(new Date(), 1)))}
+                style={styles.quickBtn}
+              >
+                <Text style={styles.quickBtnText}>Tomorrow</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setSelectedDate(ymd(addDays(new Date(), 7)))}
+                style={styles.quickBtn}
+              >
+                <Text style={styles.quickBtnText}>+7 days</Text>
+              </TouchableOpacity>
             </View>
             <TouchableOpacity style={styles.saveBtn} onPress={saveSchedule}>
               <Text style={styles.saveBtnText}>Save date</Text>
@@ -287,10 +360,19 @@ const styles = StyleSheet.create({
   modeBtnActive: { borderColor: "#c7d2fe", backgroundColor: "#eef2ff" },
   modeText: { fontSize: 12, color: "#6b7280", fontWeight: "600" },
   modeTextActive: { color: "#4f46e5" },
-  navRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  navRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   rangeLabel: { fontSize: 12, color: "#4b5563", fontWeight: "600" },
   list: { padding: 16, gap: 8 },
-  sectionTitle: { fontSize: 12, color: "#6b7280", fontWeight: "700", marginTop: 8 },
+  sectionTitle: {
+    fontSize: 12,
+    color: "#6b7280",
+    fontWeight: "700",
+    marginTop: 8,
+  },
   card: {
     borderWidth: 1,
     borderColor: "#e5e7eb",
@@ -330,7 +412,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 10,
   },
-  unscheduledTitle: { fontSize: 12, color: "#6b7280", fontWeight: "700", marginBottom: 8 },
+  unscheduledTitle: {
+    fontSize: 12,
+    color: "#6b7280",
+    fontWeight: "700",
+    marginBottom: 8,
+  },
   unscheduledWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   unscheduledChip: {
     borderWidth: 1,
@@ -342,7 +429,11 @@ const styles = StyleSheet.create({
     maxWidth: "48%",
   },
   unscheduledChipText: { fontSize: 11, color: "#4b5563" },
-  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.25)" },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.25)",
+  },
   modalCard: {
     backgroundColor: "#fff",
     borderTopLeftRadius: 16,
@@ -350,7 +441,11 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 10,
   },
-  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   modalTitle: { fontSize: 16, color: "#111827", fontWeight: "700" },
   modalTask: { fontSize: 13, color: "#374151" },
   modalHint: { fontSize: 11, color: "#6b7280" },

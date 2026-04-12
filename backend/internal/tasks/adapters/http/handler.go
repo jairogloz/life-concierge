@@ -38,21 +38,21 @@ func RegisterRoutes(router fiber.Router, svc ports.TaskService) {
 // ── Request types ─────────────────────────────────────────────────────────────
 
 type createTaskRequest struct {
-	PrimaryRoleID    string           `json:"primary_role_id"`
-	GoalID           *string          `json:"goal_id"`
-	Title            string           `json:"title"`
-	Description      string           `json:"description"`
-	TaskType         domain.TaskType  `json:"task_type"`
-	ContextTags      []string         `json:"context_tags"`
-	Impact           int              `json:"impact"`
-	Deadline         *time.Time       `json:"deadline"`
-	SoftDeadline     *time.Time       `json:"soft_deadline"`
-	ScheduledDate    *time.Time       `json:"scheduled_date"`
-	Effort           int              `json:"effort"`
-	EstimatedMinutes *int             `json:"estimated_minutes"`
-	IsRecurring      bool             `json:"is_recurring"`
-	RecurrenceRule   *string          `json:"recurrence_rule"`
-	SecondaryRoles   []string         `json:"secondary_role_ids"`
+	PrimaryRoleID    string          `json:"primary_role_id"`
+	GoalID           *string         `json:"goal_id"`
+	Title            string          `json:"title"`
+	Description      string          `json:"description"`
+	TaskType         domain.TaskType `json:"task_type"`
+	ContextTags      []string        `json:"context_tags"`
+	Impact           int             `json:"impact"`
+	Deadline         *time.Time      `json:"deadline"`
+	SoftDeadline     *time.Time      `json:"soft_deadline"`
+	ScheduledDate    *time.Time      `json:"scheduled_date"`
+	Effort           int             `json:"effort"`
+	EstimatedMinutes *int            `json:"estimated_minutes"`
+	IsRecurring      bool            `json:"is_recurring"`
+	RecurrenceRule   *string         `json:"recurrence_rule"`
+	SecondaryRoles   []string        `json:"secondary_role_ids"`
 }
 
 type updateTaskRequest struct {

@@ -30,23 +30,23 @@ type CreateTaskParams struct {
 // UpdateTaskParams holds the parameters for updating a task.
 // Pointer fields allow partial updates (nil means no change).
 type UpdateTaskParams struct {
-	Title            *string
-	Description      *string
-	TaskType         *domain.TaskType
-	ContextTags      []string
-	Impact           *int
-	Deadline         *time.Time
-	ClearDeadline    bool
-	SoftDeadline     *time.Time
-	ClearSoftDeadline bool
-	ScheduledDate    *time.Time
+	Title              *string
+	Description        *string
+	TaskType           *domain.TaskType
+	ContextTags        []string
+	Impact             *int
+	Deadline           *time.Time
+	ClearDeadline      bool
+	SoftDeadline       *time.Time
+	ClearSoftDeadline  bool
+	ScheduledDate      *time.Time
 	ClearScheduledDate bool
-	Effort           *int
-	EstimatedMinutes *int
-	IsRecurring      *bool
-	RecurrenceRule   *string
-	Status           *string
-	SecondaryRoles   []string
+	Effort             *int
+	EstimatedMinutes   *int
+	IsRecurring        *bool
+	RecurrenceRule     *string
+	Status             *string
+	SecondaryRoles     []string
 }
 
 // TaskFilter filters tasks in list operations.
