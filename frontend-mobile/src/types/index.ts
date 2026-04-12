@@ -140,3 +140,37 @@ export interface WishlistItem {
   created_at: string;
   updated_at: string;
 }
+
+// ── Timeline ─────────────────────────────────────────────────────────────────
+
+export type TimelineEventType =
+  | 'task_completed'
+  | 'expense_logged'
+  | 'wishlist_evaluated'
+  | 'role_updated'
+  | 'goal_updated';
+
+export interface TimelineEvent {
+  id: string;
+  user_id: string;
+  event_type: TimelineEventType;
+  domain: string;
+  entity_id: string | null;
+  payload: Record<string, unknown>;
+  occurred_at: string;
+}
+
+// ── Daily Brief ───────────────────────────────────────────────────────────────
+
+export interface DailyBriefAction {
+  priority: number;
+  description: string;
+  domain: string;
+}
+
+export interface DailyBrief {
+  top_actions: DailyBriefAction[];
+  finance_alert: string;
+  health_nudge: string;
+  generated_at: string;
+}

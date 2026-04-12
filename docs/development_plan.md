@@ -380,7 +380,55 @@ _Goal: Submit a potential purchase, get an AI-powered buy/wait/reject/replace ve
 
 ---
 
-## Phase 11 — Health Domain
+## Phase 11 — Timeline Domain & Daily Strategy Agent
+
+_Goal: Record every significant life event; power adaptive recommendations._
+
+### Database
+
+- ✅ `backend/migrations/000008_create_timeline.up.sql`:
+  - `timeline_events` — id, user_id, event_type, domain, entity_id UUID, payload JSONB, occurred_at
+
+### Implementation
+
+- ✅ `backend/internal/timeline/` domain — event recording service
+- ✅ Emit timeline events from all other domains:
+  - task_completed, expense_logged, wishlist_evaluated, role_updated, goal_updated
+- ✅ `GET /api/v1/timeline` — paginated event history
+
+### Daily Strategy Agent
+
+- ✅ `backend/internal/daily_brief/` — supervisor agent
+  - Reads: 30-day timeline + current goals + role weights + finance balance
+  - Produces: top 3 actions, 1 finance alert, 1 health nudge
+- ✅ `GET /api/v1/ai/daily-brief`
+
+### Frontend
+
+- ✅ Timeline feed screen (web + mobile)
+- ✅ Daily briefing card on Today dashboard
+
+### ✅ Testable milestone: After 1 week of usage, `/ai/daily-brief` returns context-aware recommendations
+
+---
+
+## Phase 12 — Gamification
+
+_Goal: Engagement layer without distorting real priorities._
+
+- ⬜ `backend/migrations/0010_create_gamification.up.sql` — `user_streaks`, `xp_log`, `achievements`
+- ⬜ Consistency bonus calculation (feeds into ranking engine's `consistency_bonus`)
+- ⬜ Streak tracking per role and globally
+- ⬜ XP awards: task completion, workout logged, budget maintained
+- ⬜ Achievement unlock system ("7-day streak", "first investment logged", etc.)
+- ⬜ `GET /api/v1/gamification/profile`
+- ⬜ Gamification widgets on Today dashboard + mobile home screen
+
+### ✅ Testable milestone: Complete 3 tasks in a day, see XP and streak update
+
+---
+
+## Phase 13 — Health Domain (Deferred)
 
 _Goal: Log workouts and body metrics; framework for future wearable integrations._
 
@@ -408,54 +456,6 @@ _Goal: Log workouts and body metrics; framework for future wearable integrations
 - ⬜ Body metrics trend chart
 
 ### ✅ Testable milestone: Log a workout with exercises, view trend chart, get training recommendation
-
----
-
-## Phase 12 — Timeline Domain & Daily Strategy Agent
-
-_Goal: Record every significant life event; power adaptive recommendations._
-
-### Database
-
-- ⬜ `backend/migrations/0009_create_timeline.up.sql`:
-  - `timeline_events` — id, user_id, event_type, domain, entity_id UUID, payload JSONB, occurred_at
-
-### Implementation
-
-- ⬜ `backend/internal/timeline/` domain — event recording service
-- ⬜ Emit timeline events from all other domains:
-  - task_completed, expense_logged, wishlist_evaluated, workout_recorded, role_updated
-- ⬜ `GET /api/v1/timeline` — paginated event history
-
-### Daily Strategy Agent
-
-- ⬜ `backend/internal/ai/daily_strategy_agent.go` — supervisor agent
-  - Reads: 30-day timeline + current goals + role weights
-  - Produces: top 3 actions, 1 finance alert, 1 health nudge
-- ⬜ `GET /api/v1/ai/daily-brief`
-
-### Frontend
-
-- ⬜ Timeline feed screen
-- ⬜ Daily briefing card on Today dashboard
-
-### ✅ Testable milestone: After 1 week of usage, `/ai/daily-brief` returns context-aware recommendations
-
----
-
-## Phase 13 — Gamification
-
-_Goal: Engagement layer without distorting real priorities._
-
-- ⬜ `backend/migrations/0010_create_gamification.up.sql` — `user_streaks`, `xp_log`, `achievements`
-- ⬜ Consistency bonus calculation (feeds into ranking engine's `consistency_bonus`)
-- ⬜ Streak tracking per role and globally
-- ⬜ XP awards: task completion, workout logged, budget maintained
-- ⬜ Achievement unlock system ("7-day streak", "first investment logged", etc.)
-- ⬜ `GET /api/v1/gamification/profile`
-- ⬜ Gamification widgets on Today dashboard + mobile home screen
-
-### ✅ Testable milestone: Complete 3 tasks in a day, see XP and streak update
 
 ---
 
@@ -496,6 +496,6 @@ _Goal: Engagement layer without distorting real priorities._
 | 8     | Frontend mobile MVP                    | ✅     |
 | 9     | Finance domain                         | ✅     |
 | 10    | Wishlist decision engine               | ✅     |
-| 11    | Health domain                          | ⬜     |
-| 12    | Timeline + daily strategy agent        | ⬜     |
-| 13    | Gamification                           | ⬜     |
+| 11    | Timeline + daily strategy agent        | ✅     |
+| 12    | Gamification                           | ⬜     |
+| 13    | Health domain (deferred)               | ⬜     |

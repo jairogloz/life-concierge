@@ -9,6 +9,7 @@ import Tasks from "./pages/Tasks";
 import Inbox from "./pages/Inbox";
 import Finance from "./pages/Finance";
 import Wishlist from "./pages/Wishlist";
+import Timeline from "./pages/Timeline";
 
 export default function App() {
   return (
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="inbox" element={<Inbox />} />
           <Route path="finance" element={<Finance />} />
           <Route path="wishlist" element={<Wishlist />} />
+          <Route path="timeline" element={<Timeline />} />
         </Route>
       </Routes>
     </BrowserRouter>

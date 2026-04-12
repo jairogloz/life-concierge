@@ -41,6 +41,12 @@ const TABS: TabConfig[] = [
     activeIcon: "cart",
     inactiveIcon: "cart-outline",
   },
+  {
+    name: "timeline",
+    title: "Timeline",
+    activeIcon: "time",
+    inactiveIcon: "time-outline",
+  },
 ];
 
 export default function TabsLayout() {

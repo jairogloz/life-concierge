@@ -47,6 +47,15 @@ import (
 	wishlpostgres "github.com/jairogloz/life-concierge/internal/wishlist/adapters/postgres"
 	wishlapp "github.com/jairogloz/life-concierge/internal/wishlist/application"
 
+	briefcontext "github.com/jairogloz/life-concierge/internal/daily_brief/adapters/context"
+	briefhttp "github.com/jairogloz/life-concierge/internal/daily_brief/adapters/http"
+	briefopenaiadapter "github.com/jairogloz/life-concierge/internal/daily_brief/adapters/openai"
+	briefapp "github.com/jairogloz/life-concierge/internal/daily_brief/application"
+
+	timelinehttp "github.com/jairogloz/life-concierge/internal/timeline/adapters/http"
+	timelinepostgres "github.com/jairogloz/life-concierge/internal/timeline/adapters/postgres"
+	timelineapp "github.com/jairogloz/life-concierge/internal/timeline/application"
+
 	"github.com/jairogloz/life-concierge/internal/shared/config"
 	"github.com/jairogloz/life-concierge/internal/shared/database"
 	healthhandler "github.com/jairogloz/life-concierge/internal/shared/handlers/health"
@@ -124,6 +133,18 @@ func main() {
 	wishlFinance := wishlcontext.NewFinanceReader(financeRepo)
 	wishlService := wishlapp.NewWishlistService(wishlRepo, wishlAgent, wishlRoles, wishlGoals, wishlFinance)
 
+	// Timeline
+	timelineRepo := timelinepostgres.NewTimelineRepository(db)
+	timelineService := timelineapp.NewTimelineService(timelineRepo)
+
+	// Daily Brief
+	briefTimeline := briefcontext.NewTimelineReader(timelineRepo)
+	briefGoals := briefcontext.NewGoalsReader(goalsRepo)
+	briefRoles := briefcontext.NewRolesReader(rolesRepo)
+	briefFinance := briefcontext.NewFinanceReader(financeRepo)
+	briefAgent := briefopenaiadapter.NewStrategyAgent(openaiClient, cfg.OpenAIModel)
+	briefService := briefapp.NewDailyBriefService(briefTimeline, briefGoals, briefRoles, briefFinance, briefAgent)
+
 	// ── Routes: authenticated API v1 ─────────────────────────────────────────
 	// All routes under /api/v1 require a valid Clerk JWT.
 	api := app.Group("/api/v1", middleware.RequireAuth())
@@ -136,6 +157,8 @@ func main() {
 	taskshttp.RegisterRoutes(api, tasksService)
 	financehttp.RegisterRoutes(api, financeService)
 	wishlhttp.RegisterRoutes(api, wishlService)
+	timelinehttp.RegisterRoutes(api, timelineService)
+	briefhttp.RegisterRoutes(api, briefService)
 
 	// ── Graceful shutdown ─────────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)
