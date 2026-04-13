@@ -93,8 +93,9 @@ func main() {
 
 	// ── Fiber app ────────────────────────────────────────────────────────────
 	app := fiber.New(fiber.Config{
-		AppName:      "life-concierge",
-		ErrorHandler: customErrorHandler,
+		AppName:        "life-concierge",
+		ErrorHandler:   customErrorHandler,
+		ReadBufferSize: 16 * 1024,
 	})
 
 	// Global middleware

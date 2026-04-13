@@ -121,7 +121,9 @@ export default function Wishlist() {
       await api.post(`/wishlist/${itemId}/mark-bought`, {});
       await load();
     } catch (err: any) {
-      alert(err?.response?.data?.error?.message ?? "Could not mark item bought.");
+      alert(
+        err?.response?.data?.error?.message ?? "Could not mark item bought.",
+      );
     }
   }
 
@@ -183,7 +185,9 @@ export default function Wishlist() {
             <select
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={form.currency}
-              onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, currency: e.target.value }))
+              }
             >
               <option value="MXN">MXN</option>
               <option value="USD">USD</option>
@@ -279,13 +283,18 @@ export default function Wishlist() {
 
       {/* ── Ranked list ───────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Ranked Buy Order</h2>
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">
+          Ranked Buy Order
+        </h2>
         {ranked.length === 0 ? (
           <p className="text-sm text-gray-400">No active items to rank.</p>
         ) : (
           <ol className="space-y-3">
             {ranked.map((row) => (
-              <li key={row.item.id} className="rounded-lg border border-gray-200 p-3">
+              <li
+                key={row.item.id}
+                className="rounded-lg border border-gray-200 p-3"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-medium text-gray-900 truncate">
                     #{row.rank} {row.item.title}
