@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	gamificationports "github.com/jairogloz/life-concierge/internal/gamification/ports"
 
 	"github.com/jairogloz/life-concierge/internal/tasks/domain"
 	"github.com/jairogloz/life-concierge/internal/tasks/ports"
@@ -15,12 +16,16 @@ import (
 
 // TaskService implements ports.TaskService.
 type TaskService struct {
-	repo     ports.TaskRepository
-	timeline timelineports.TimelineService
+	repo         ports.TaskRepository
+	timeline     timelineports.TimelineService
+	gamification gamificationports.GamificationService
 }
 
 // SetTimeline wires the timeline service for event emission.
 func (s *TaskService) SetTimeline(tl timelineports.TimelineService) { s.timeline = tl }
+
+// SetGamification wires the gamification service for XP/streak updates.
+func (s *TaskService) SetGamification(gm gamificationports.GamificationService) { s.gamification = gm }
 
 // NewTaskService creates a new TaskService.
 func NewTaskService(repo ports.TaskRepository) *TaskService {
@@ -207,6 +212,11 @@ func (s *TaskService) CompleteTask(ctx context.Context, userID, id string) (*dom
 				EntityID:  &updatedTask.ID,
 				Payload:   map[string]any{"title": updatedTask.Title},
 			})
+		}()
+	}
+	if s.gamification != nil {
+		go func() {
+			_ = s.gamification.AwardTaskCompleted(context.Background(), userID, &updatedTask.PrimaryRoleID, updatedTask.Title)
 		}()
 	}
 	return updatedTask, nil

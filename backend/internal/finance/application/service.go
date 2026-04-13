@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	gamificationports "github.com/jairogloz/life-concierge/internal/gamification/ports"
 
 	"github.com/jairogloz/life-concierge/internal/finance/domain"
 	"github.com/jairogloz/life-concierge/internal/finance/ports"
@@ -16,8 +17,9 @@ import (
 
 // FinanceService implements ports.FinanceService.
 type FinanceService struct {
-	repo     ports.FinanceRepository
-	timeline timelineports.TimelineService
+	repo         ports.FinanceRepository
+	timeline     timelineports.TimelineService
+	gamification gamificationports.GamificationService
 }
 
 // NewFinanceService creates a new FinanceService.
@@ -27,6 +29,11 @@ func NewFinanceService(repo ports.FinanceRepository) *FinanceService {
 
 // SetTimeline wires the timeline service for event emission.
 func (s *FinanceService) SetTimeline(tl timelineports.TimelineService) { s.timeline = tl }
+
+// SetGamification wires the gamification service for XP/streak updates.
+func (s *FinanceService) SetGamification(gm gamificationports.GamificationService) {
+	s.gamification = gm
+}
 
 // ── Accounts ─────────────────────────────────────────────────────────────────
 
@@ -132,6 +139,11 @@ func (s *FinanceService) CreateTransaction(ctx context.Context, params ports.Cre
 				EntityID:  &tx.ID,
 				Payload:   map[string]any{"amount": tx.Amount, "category": tx.Category, "description": tx.Description},
 			})
+		}()
+	}
+	if tx.Type == domain.TransactionTypeExpense && s.gamification != nil {
+		go func() {
+			_ = s.gamification.AwardExpenseLogged(context.Background(), tx.UserID, tx.Category, tx.Amount)
 		}()
 	}
 

@@ -577,7 +577,7 @@ execution_priority_score =
 - ⬜ `maintenance_decay` hook in balance service (interface stub)
 - ⬜ `anti_busywork_filter` hook in ranking service (interface stub)
 - ⬜ `deferral_penalty` field on tasks (column + zero-value for now)
-- ⬜ `consistency_bonus` calculation placeholder in balance service
+- ✅ `consistency_bonus` integrated via gamification streak bonus in ranking service
 - ⬜ `context_match` and `energy_fit` accept enum input but default to 1.0
 
 ### Tests
@@ -673,13 +673,13 @@ _Goal: Mark items as bought, order items by heuristic priority, align currencies
 
 _Goal: Engagement layer without distorting real priorities._
 
-- ⬜ `backend/migrations/000012_create_gamification.up.sql` — `user_streaks`, `xp_log`, `achievements`
-- ⬜ Consistency bonus calculation (feeds into Phase 13 `consistency_bonus` extension point)
-- ⬜ Streak tracking per role and globally
-- ⬜ XP awards: task completion, expense logged, wishlist item evaluated
-- ⬜ Achievement unlock system ("7-day streak", "first investment logged", etc.)
-- ⬜ `GET /api/v1/gamification/profile`
-- ⬜ Gamification widgets on Today dashboard + mobile home screen
+- ✅ `backend/migrations/000012_create_gamification.up.sql` — `user_streaks`, `xp_log`, `achievements`
+- ✅ Consistency bonus calculation (feeds into Phase 13 `consistency_bonus` extension point)
+- ✅ Streak tracking per role and globally
+- ✅ XP awards: task completion, expense logged, wishlist item evaluated
+- ✅ Achievement unlock system ("7-day streak", "first investment logged", etc.)
+- ✅ `GET /api/v1/gamification/profile`
+- ✅ Gamification widgets on Today dashboard + mobile home screen
 
 ### ✅ Testable milestone: Complete 3 tasks in a day, see XP and streak update
 

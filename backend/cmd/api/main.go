@@ -59,6 +59,10 @@ import (
 	briefopenaiadapter "github.com/jairogloz/life-concierge/internal/daily_brief/adapters/openai"
 	briefapp "github.com/jairogloz/life-concierge/internal/daily_brief/application"
 
+	gamificationhttp "github.com/jairogloz/life-concierge/internal/gamification/adapters/http"
+	gamificationpostgres "github.com/jairogloz/life-concierge/internal/gamification/adapters/postgres"
+	gamificationapp "github.com/jairogloz/life-concierge/internal/gamification/application"
+
 	timelinehttp "github.com/jairogloz/life-concierge/internal/timeline/adapters/http"
 	timelinepostgres "github.com/jairogloz/life-concierge/internal/timeline/adapters/postgres"
 	timelineapp "github.com/jairogloz/life-concierge/internal/timeline/application"
@@ -156,6 +160,14 @@ func main() {
 	financeService.SetTimeline(timelineService)
 	wishlService.SetTimeline(timelineService)
 
+	// Gamification
+	gamificationRepo := gamificationpostgres.NewGamificationRepository(db)
+	gamificationService := gamificationapp.NewGamificationService(gamificationRepo)
+	rankingService.SetGamification(gamificationService)
+	tasksService.SetGamification(gamificationService)
+	financeService.SetGamification(gamificationService)
+	wishlService.SetGamification(gamificationService)
+
 	// Daily Brief
 	briefTimeline := briefcontext.NewTimelineReader(timelineRepo)
 	briefGoals := briefcontext.NewGoalsReader(goalsRepo)
@@ -180,6 +192,7 @@ func main() {
 	taskshttp.RegisterRoutes(api, tasksService)
 	financehttp.RegisterRoutes(api, financeService)
 	wishlhttp.RegisterRoutes(api, wishlService)
+	gamificationhttp.RegisterRoutes(api, gamificationService)
 	timelinehttp.RegisterRoutes(api, timelineService)
 	briefhttp.RegisterRoutes(api, briefService)
 

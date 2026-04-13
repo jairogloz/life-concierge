@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useApi } from "../lib/useApi";
 import Spinner from "../components/Spinner";
-import type { ScoredTask, DailyBrief, Role } from "../types";
+import type {
+  ScoredTask,
+  DailyBrief,
+  Role,
+  GamificationProfile,
+} from "../types";
 
 // ── DailyBriefCard ─────────────────────────────────────────────────────────
 
@@ -156,6 +161,9 @@ export default function Today() {
   const api = useApi();
   const [searchParams, setSearchParams] = useSearchParams();
   const [ranked, setRanked] = useState<ScoredTask[]>([]);
+  const [gamification, setGamification] = useState<GamificationProfile | null>(
+    null,
+  );
   const [roles, setRoles] = useState<Role[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,6 +180,17 @@ export default function Today() {
     return value ? value.split(",").filter(Boolean) : [];
   });
 
+  const loadGamification = useCallback(async () => {
+    try {
+      const res = await api.get<{ data: GamificationProfile }>(
+        "/gamification/profile",
+      );
+      setGamification(res.data.data);
+    } catch {
+      setGamification(null);
+    }
+  }, [api]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -183,10 +202,11 @@ export default function Today() {
       setRanked(rankedRes.data.data ?? []);
       setRoles(rolesRes.data.data ?? []);
       setTags(tagsRes.data.data ?? []);
+      await loadGamification();
     } finally {
       setLoading(false);
     }
-  }, [api]);
+  }, [api, loadGamification]);
 
   useEffect(() => {
     load();
@@ -205,6 +225,7 @@ export default function Today() {
     try {
       await api.patch(`/tasks/${taskId}/complete`);
       setRanked((prev) => prev.filter((s) => s.task.id !== taskId));
+      await loadGamification();
     } finally {
       setCompleting(null);
     }
@@ -369,6 +390,34 @@ export default function Today() {
       </div>
 
       <DailyBriefCard />
+
+      {gamification && (
+        <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                🏆 Momentum
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                XP grows with consistent execution
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="px-2 py-1 rounded-full bg-white text-amber-700 border border-amber-200">
+                {gamification.total_xp} XP
+              </span>
+              <span className="px-2 py-1 rounded-full bg-white text-amber-700 border border-amber-200">
+                🔥 {gamification.global_current_streak} day streak
+              </span>
+            </div>
+          </div>
+          {gamification.recent_achievements.length > 0 && (
+            <div className="mt-2 text-xs text-amber-800">
+              Latest: {gamification.recent_achievements[0].title}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4 space-y-3">
         <p className="text-sm font-semibold text-gray-700">Task filters</p>

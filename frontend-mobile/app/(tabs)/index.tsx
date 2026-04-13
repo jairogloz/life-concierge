@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useApi } from "@/lib/useApi";
-import type { Role, ScoredTask } from "@/types";
+import type { GamificationProfile, Role, ScoredTask } from "@/types";
 
 type TaskType = "one_time" | "daily";
 
@@ -110,6 +110,9 @@ export default function TodayScreen() {
   const [tasks, setTasks] = useState<ScoredTask[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [tags, setTags] = useState<string[]>([]);
+  const [gamification, setGamification] = useState<GamificationProfile | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -121,14 +124,18 @@ export default function TodayScreen() {
     async (silent = false) => {
       if (!silent) setLoading(true);
       try {
-        const [rankedRes, rolesRes, tagsRes] = await Promise.all([
+        const [rankedRes, rolesRes, tagsRes, gmRes] = await Promise.all([
           api.get<{ data: ScoredTask[] }>("/tasks/ranked?limit=50"),
           api.get<{ data: Role[] }>("/roles"),
           api.get<{ data: string[] }>("/tasks/tags"),
+          api
+            .get<{ data: GamificationProfile }>("/gamification/profile")
+            .catch(() => null),
         ]);
         setTasks(rankedRes.data.data ?? []);
         setRoles(rolesRes.data.data ?? []);
         setTags(tagsRes.data.data ?? []);
+        setGamification(gmRes?.data?.data ?? null);
       } catch (err) {
         console.error("Failed to fetch ranked tasks", err);
       } finally {
@@ -147,6 +154,10 @@ export default function TodayScreen() {
     try {
       await api.patch(`/tasks/${id}/complete`);
       setTasks((prev) => prev.filter((st) => st.task.id !== id));
+      const gmRes = await api
+        .get<{ data: GamificationProfile }>("/gamification/profile")
+        .catch(() => null);
+      setGamification(gmRes?.data?.data ?? null);
     } catch {
       Alert.alert("Error", "Could not complete task.");
     }
@@ -222,6 +233,25 @@ export default function TodayScreen() {
           <Ionicons name="options-outline" size={16} color="#4f46e5" />
           <Text style={styles.filterBtnText}>Filters</Text>
         </TouchableOpacity>
+
+        {gamification && (
+          <View style={styles.gamificationCard}>
+            <Text style={styles.gamificationTitle}>🏆 Momentum</Text>
+            <View style={styles.gamificationMetaRow}>
+              <Text style={styles.gamificationChip}>
+                {gamification.total_xp} XP
+              </Text>
+              <Text style={styles.gamificationChip}>
+                🔥 {gamification.global_current_streak} day streak
+              </Text>
+            </View>
+            {gamification.recent_achievements.length > 0 && (
+              <Text style={styles.gamificationAchievement}>
+                Latest: {gamification.recent_achievements[0].title}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
 
       <FlatList
@@ -389,6 +419,38 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   filterBtnText: { color: "#4f46e5", fontSize: 12, fontWeight: "600" },
+  gamificationCard: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#fde68a",
+    backgroundColor: "#fffbeb",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  gamificationTitle: { fontSize: 12, color: "#92400e", fontWeight: "700" },
+  gamificationMetaRow: {
+    marginTop: 6,
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  gamificationChip: {
+    borderWidth: 1,
+    borderColor: "#fde68a",
+    backgroundColor: "#fff",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    fontSize: 11,
+    color: "#92400e",
+    fontWeight: "600",
+  },
+  gamificationAchievement: {
+    marginTop: 6,
+    fontSize: 11,
+    color: "#a16207",
+  },
   sectionTitle: {
     fontSize: 13,
     fontWeight: "700",

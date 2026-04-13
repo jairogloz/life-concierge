@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	gamificationports "github.com/jairogloz/life-concierge/internal/gamification/ports"
 	timelinedomain "github.com/jairogloz/life-concierge/internal/timeline/domain"
 	timelineports "github.com/jairogloz/life-concierge/internal/timeline/ports"
 	"github.com/jairogloz/life-concierge/internal/wishlist/domain"
@@ -17,16 +18,22 @@ import (
 
 // WishlistService implements ports.WishlistService.
 type WishlistService struct {
-	repo     ports.WishlistRepository
-	agent    ports.WishlistAgent
-	roles    ports.RoleReader
-	goals    ports.GoalReader
-	finance  ports.FinanceSummaryReader
-	timeline timelineports.TimelineService
+	repo         ports.WishlistRepository
+	agent        ports.WishlistAgent
+	roles        ports.RoleReader
+	goals        ports.GoalReader
+	finance      ports.FinanceSummaryReader
+	timeline     timelineports.TimelineService
+	gamification gamificationports.GamificationService
 }
 
 // SetTimeline wires the timeline service for event emission.
 func (s *WishlistService) SetTimeline(tl timelineports.TimelineService) { s.timeline = tl }
+
+// SetGamification wires the gamification service for XP/streak updates.
+func (s *WishlistService) SetGamification(gm gamificationports.GamificationService) {
+	s.gamification = gm
+}
 
 // NewWishlistService creates a new WishlistService.
 func NewWishlistService(
@@ -196,6 +203,11 @@ func (s *WishlistService) EvaluateItem(ctx context.Context, userID, itemID strin
 				EntityID:  &item.ID,
 				Payload:   map[string]any{"title": item.Title, "verdict": verdict, "price": item.Price},
 			})
+		}()
+	}
+	if s.gamification != nil {
+		go func() {
+			_ = s.gamification.AwardWishlistEvaluated(context.Background(), userID, item.Title)
 		}()
 	}
 	return item, nil

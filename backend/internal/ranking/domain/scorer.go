@@ -11,12 +11,13 @@ import (
 
 // ScoredTask pairs a task with its Execution Priority Score and score factors.
 type ScoredTask struct {
-	Task            *taskdomain.Task `json:"task"`
-	Score           float64          `json:"score"`
-	RoleWeight      float64          `json:"role_weight"`
-	GoalWeight      float64          `json:"goal_weight"`
-	RoleNeglectMult float64          `json:"role_neglect_mult"`
-	Explanations    []string         `json:"explanations"`
+	Task             *taskdomain.Task `json:"task"`
+	Score            float64          `json:"score"`
+	RoleWeight       float64          `json:"role_weight"`
+	GoalWeight       float64          `json:"goal_weight"`
+	RoleNeglectMult  float64          `json:"role_neglect_mult"`
+	ConsistencyBonus float64          `json:"consistency_bonus"`
+	Explanations     []string         `json:"explanations"`
 }
 
 // ScoreInput holds everything needed to compute a task score.
@@ -28,6 +29,8 @@ type ScoreInput struct {
 	// 0 means the role is fully neglected; 1 means it is fully served.
 	// Leave as 0 to apply maximum neglect boost.
 	RoleBalanceScore float64
+	// ConsistencyBonus is a small streak-based multiplier (defaults to 1.0).
+	ConsistencyBonus float64
 	Now              time.Time
 }
 
@@ -37,7 +40,7 @@ type ScoreInput struct {
 //
 //	roi = (roleW × goalW × impact × taskTypeMult) / sqrt(max(15, estMins))
 //	role_neglect_mult = 1 + 0.8 × max(0, 1 − role_balance_score)
-//	EPS = roi × role_neglect_mult × deadline_pressure × scheduled_mult
+//	EPS = roi × role_neglect_mult × consistency_bonus × deadline_pressure × scheduled_mult
 //
 // The function also returns a slice of human-readable explanation strings.
 func ComputeScore(in ScoreInput) (float64, []string) {
@@ -79,6 +82,14 @@ func ComputeScore(in ScoreInput) (float64, []string) {
 		explanations = append(explanations, fmt.Sprintf("Deadline pressure ×%.2f", dp))
 	}
 
+	consistencyBonus := in.ConsistencyBonus
+	if consistencyBonus <= 0 {
+		consistencyBonus = 1.0
+	}
+	if consistencyBonus > 1.0 {
+		explanations = append(explanations, fmt.Sprintf("Consistency bonus ×%.2f", consistencyBonus))
+	}
+
 	scheduledMult := computeScheduledMult(in.Task.ScheduledDate, in.Now)
 	switch {
 	case scheduledMult > 1.0:
@@ -87,7 +98,7 @@ func ComputeScore(in ScoreInput) (float64, []string) {
 		explanations = append(explanations, "Scheduled future ×0.5")
 	}
 
-	score := roi * neglectMult * dp * scheduledMult
+	score := roi * neglectMult * consistencyBonus * dp * scheduledMult
 	return score, explanations
 }
 
@@ -160,13 +171,18 @@ func RankTasks(inputs []ScoreInput) []*ScoredTask {
 		score, explanations := ComputeScore(in)
 		balanceScore := in.RoleBalanceScore
 		neglectMult := 1.0 + 0.8*math.Max(0, 1-balanceScore)
+		consistencyBonus := in.ConsistencyBonus
+		if consistencyBonus <= 0 {
+			consistencyBonus = 1.0
+		}
 		result = append(result, &ScoredTask{
-			Task:            in.Task,
-			Score:           score,
-			RoleWeight:      in.RoleWeight,
-			GoalWeight:      in.GoalWeight,
-			RoleNeglectMult: neglectMult,
-			Explanations:    explanations,
+			Task:             in.Task,
+			Score:            score,
+			RoleWeight:       in.RoleWeight,
+			GoalWeight:       in.GoalWeight,
+			RoleNeglectMult:  neglectMult,
+			ConsistencyBonus: consistencyBonus,
+			Explanations:     explanations,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool {

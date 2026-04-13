@@ -224,3 +224,29 @@ export interface DailyBrief {
   health_nudge: string;
   generated_at: string;
 }
+
+// ── Gamification ─────────────────────────────────────────────────────────────
+
+export interface Streak {
+  scope_type: "global" | "role";
+  role_id: string | null;
+  role_name?: string | null;
+  current_streak: number;
+  longest_streak: number;
+  last_activity_date: string | null;
+}
+
+export interface Achievement {
+  code: string;
+  title: string;
+  description: string;
+  unlocked_at: string;
+}
+
+export interface GamificationProfile {
+  total_xp: number;
+  global_current_streak: number;
+  global_longest_streak: number;
+  role_streaks: Streak[];
+  recent_achievements: Achievement[];
+}
