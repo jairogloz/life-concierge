@@ -685,13 +685,98 @@ _Goal: Engagement layer without distorting real priorities._
 
 ---
 
-## Phase 18 — Health Domain (Deferred)
+## Phase 18 — Weekly Planning Domain (Weeks + Allocations)
+
+_Goal: Replace "Today-first" flow with a weekly sprint workflow that has explicit planning, execution, and review states._
+
+### Database
+
+- ⬜ `backend/migrations/000013_create_weeks.up.sql`:
+  - `weeks` — id, user_id, starts_on, ends_on, status (`planning|active|review|closed`), started_at, closed_at
+  - Week boundary rule: fixed Monday–Sunday window (`starts_on` must be Monday, `ends_on` must be Sunday)
+  - `week_priorities` — id, week_id, text, order_index (center section "week priorities")
+  - `task_week_allocations` — id, task_id, week_id, day_of_week, slot_minute_of_day, lane (`daily_priority|timeslot`), status_snapshot
+    - `slot_minute_of_day` stored in 15-minute increments (e.g., 540 = 09:00, 555 = 09:15)
+  - Unique constraint: one active/planning week per user per date range
+
+### Domain, Ports, Adapters, Application, Routes
+
+- ⬜ `GET/POST   /api/v1/weeks`
+- ⬜ `GET/PUT    /api/v1/weeks/:id`
+- ⬜ `POST       /api/v1/weeks/:id/start` (planning → active)
+- ⬜ `POST       /api/v1/weeks/:id/enter-review` (active → review)
+- ⬜ `POST       /api/v1/weeks/:id/close` (review → closed + carryover)
+- ⬜ `GET/POST   /api/v1/weeks/:id/priorities`
+- ⬜ `GET/POST   /api/v1/weeks/:id/allocations`
+
+### Planner behavior
+
+- ⬜ Sunday planning flow: current week in review/close, next week in planning
+- ⬜ Auto-create next planning week when closing current week
+- ⬜ Unfinished allocated tasks return to backlog when week closes
+- ⬜ Preserve audit trail: allocation history remains visible in past weeks
+
+### ✅ Testable milestone: Create week, allocate tasks into day columns/timeslots, close week, verify unfinished tasks return to backlog
+
+---
+
+## Phase 19 — Weekly Planner Web UI (Primary Home)
+
+_Goal: Make weekly planner the default home view with the exact information architecture requested._
+
+### Home layout
+
+- ⬜ Replace current Today task-list home with planner board:
+  - Left rail: roles + goals snapshot (always visible)
+  - Center rail: week priorities backlog (undated within the week)
+  - Right area: Monday–Sunday columns with (a) daily priorities and (b) timeslots
+- ⬜ Keep planner optimized for Sunday planning and weekday execution
+- ⬜ Delivery scope for this phase: **web only** (mobile will follow in a later phase)
+
+### Planner interactions
+
+- ⬜ Hourly visual grid with drag/drop snapping at 15-minute increments
+- ⬜ Drag/drop or quick-assign task into day + lane + optional time slot
+- ⬜ Quick-add from backlog with role and importance filters
+- ⬜ Inline complete/move/remove actions on planned cards
+- ⬜ "Start week" and "Review week" controls surfaced at top level
+
+### ✅ Testable milestone: Plan full week from home screen without navigating to old Today list
+
+---
+
+## Phase 20 — Week Review + Balance Projections
+
+_Goal: Weekly close-out flow with fast triage and always-on balance guidance while planning._
+
+### Week review workflow
+
+- ⬜ Dedicated review panel for selected week with all allocated tasks grouped by status
+- ⬜ Bulk actions in review: mark done, move to next week, send to backlog
+- ⬜ Auto-carryover fallback at close for anything still unfinished
+
+### Dual spider diagrams (top-right)
+
+- ⬜ Current balance radar: computed from completed tasks in the selected week
+- ⬜ Target balance radar: projected if all currently planned tasks are completed
+- ⬜ Live preview while adding/moving tasks to expose role coverage gaps
+
+### Weeks section
+
+- ⬜ New weeks index: past, current, upcoming weeks
+- ⬜ Quick clone of week priorities/planning skeleton into upcoming week
+
+### ✅ Testable milestone: During planning, adding/removing tasks changes target radar immediately; during review, unfinished tasks triaged in <2 minutes
+
+---
+
+## Phase 21 — Health Domain (Deferred)
 
 _Goal: Log workouts and body metrics; framework for future wearable integrations._
 
 ### Database
 
-- ⬜ `backend/migrations/000013_create_health.up.sql`:
+- ⬜ `backend/migrations/000014_create_health.up.sql`:
   - `workout_sessions` — id, user_id, date, duration_minutes, intensity, goal_alignment, notes
   - `exercise_entries` — id, session_id, exercise_name, details JSONB
   - `body_metrics` — id, user_id, date, weight_kg, body_fat_pct, waist_cm, vo2_estimate, resting_hr
@@ -740,24 +825,27 @@ _Goal: Log workouts and body metrics; framework for future wearable integrations
 
 ## Summary Table
 
-| Phase | Description                             | Status |
-| ----- | --------------------------------------- | ------ |
-| 0     | Repo scaffold + external services       | ✅     |
-| 1     | Backend foundation (Fiber + DB + auth)  | ✅     |
-| 2     | Roles domain                            | ✅     |
-| 3     | Goals domain                            | ✅     |
-| 4     | Tasks domain                            | ✅     |
-| 5     | Ranking engine                          | ✅     |
-| 6     | AI task agent + inbox                   | ✅     |
-| 7     | Frontend web MVP                        | ✅     |
-| 8     | Frontend mobile MVP                     | ✅     |
-| 9     | Finance domain                          | ✅     |
-| 10    | Wishlist decision engine                | ✅     |
-| 11    | Timeline + daily strategy agent         | ✅     |
-| 12    | Task Model v2 (impact, effort, types)   | ✅     |
-| 13    | Execution Priority + Life Balance Score | ✅     |
-| 14    | Today Dashboard v2 + Task Filtering     | ✅     |
-| 15    | Calendar View                           | ✅     |
-| 16    | Wishlist v2 + Currency Enhancements     | ✅     |
-| 17    | Gamification                            | ⬜     |
-| 18    | Health domain (deferred)                | ⬜     |
+| Phase | Description                                  | Status |
+| ----- | -------------------------------------------- | ------ |
+| 0     | Repo scaffold + external services            | ✅     |
+| 1     | Backend foundation (Fiber + DB + auth)       | ✅     |
+| 2     | Roles domain                                 | ✅     |
+| 3     | Goals domain                                 | ✅     |
+| 4     | Tasks domain                                 | ✅     |
+| 5     | Ranking engine                               | ✅     |
+| 6     | AI task agent + inbox                        | ✅     |
+| 7     | Frontend web MVP                             | ✅     |
+| 8     | Frontend mobile MVP                          | ✅     |
+| 9     | Finance domain                               | ✅     |
+| 10    | Wishlist decision engine                     | ✅     |
+| 11    | Timeline + daily strategy agent              | ✅     |
+| 12    | Task Model v2 (impact, effort, types)        | ✅     |
+| 13    | Execution Priority + Life Balance Score      | ✅     |
+| 14    | Today Dashboard v2 + Task Filtering          | ✅     |
+| 15    | Calendar View                                | ✅     |
+| 16    | Wishlist v2 + Currency Enhancements          | ✅     |
+| 17    | Gamification                                 | ⬜     |
+| 18    | Weekly planning domain (weeks + allocations) | ⬜     |
+| 19    | Weekly planner web UI (primary home)         | ⬜     |
+| 20    | Week review + balance projections            | ⬜     |
+| 21    | Health domain (deferred)                     | ⬜     |

@@ -59,6 +59,10 @@ import (
 	briefopenaiadapter "github.com/jairogloz/life-concierge/internal/daily_brief/adapters/openai"
 	briefapp "github.com/jairogloz/life-concierge/internal/daily_brief/application"
 
+	weekshttp "github.com/jairogloz/life-concierge/internal/weeks/adapters/http"
+	weekspostgres "github.com/jairogloz/life-concierge/internal/weeks/adapters/postgres"
+	weeksapp "github.com/jairogloz/life-concierge/internal/weeks/application"
+
 	gamificationhttp "github.com/jairogloz/life-concierge/internal/gamification/adapters/http"
 	gamificationpostgres "github.com/jairogloz/life-concierge/internal/gamification/adapters/postgres"
 	gamificationapp "github.com/jairogloz/life-concierge/internal/gamification/application"
@@ -176,6 +180,10 @@ func main() {
 	briefAgent := briefopenaiadapter.NewStrategyAgent(openaiClient, cfg.OpenAIModel)
 	briefService := briefapp.NewDailyBriefService(briefTimeline, briefGoals, briefRoles, briefFinance, briefAgent)
 
+	// Weeks
+	weeksRepo := weekspostgres.NewWeeksRepository(db)
+	weeksService := weeksapp.NewWeeksService(weeksRepo)
+
 	// ── Routes: authenticated API v1 ─────────────────────────────────────────
 	// All routes under /api/v1 require a valid Clerk JWT.
 	api := app.Group("/api/v1", middleware.RequireAuth())
@@ -195,6 +203,7 @@ func main() {
 	gamificationhttp.RegisterRoutes(api, gamificationService)
 	timelinehttp.RegisterRoutes(api, timelineService)
 	briefhttp.RegisterRoutes(api, briefService)
+	weekshttp.RegisterRoutes(api, weeksService)
 
 	// ── Graceful shutdown ─────────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)

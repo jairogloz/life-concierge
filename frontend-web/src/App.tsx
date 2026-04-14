@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SignIn, SignUp } from "@clerk/clerk-react";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import WeeklyPlanner from "./pages/WeeklyPlanner";
 import Today from "./pages/Today";
 import Dashboard from "./pages/Dashboard";
 import Roles from "./pages/Roles";
@@ -12,6 +13,7 @@ import Inbox from "./pages/Inbox";
 import Finance from "./pages/Finance";
 import Wishlist from "./pages/Wishlist";
 import Timeline from "./pages/Timeline";
+import Weeks from "./pages/Weeks";
 
 export default function App() {
   return (
@@ -40,7 +42,9 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Today />} />
+          <Route index element={<WeeklyPlanner />} />
+          <Route path="today" element={<Today />} />
+          <Route path="weeks" element={<Weeks />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="roles" element={<Roles />} />
           <Route path="goals" element={<Goals />} />

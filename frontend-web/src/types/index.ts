@@ -250,3 +250,63 @@ export interface GamificationProfile {
   role_streaks: Streak[];
   recent_achievements: Achievement[];
 }
+
+// ── Weeks Planner ───────────────────────────────────────────────────────────
+
+export type WeekStatus = "planning" | "active" | "review" | "closed";
+
+export interface Week {
+  id: string;
+  user_id: string;
+  starts_on: string;
+  ends_on: string;
+  status: WeekStatus;
+  started_at: string | null;
+  closed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WeekPriority {
+  id: string;
+  week_id: string;
+  text: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type WeekAllocationLane = "daily_priority" | "timeslot";
+
+export interface WeekAllocation {
+  id: string;
+  week_id: string;
+  task_id: string;
+  day_of_week: number;
+  slot_minute_of_day: number | null;
+  lane: WeekAllocationLane;
+  status_snapshot: "planned" | "done" | "moved" | "backlog";
+  task_title: string;
+  task_status: string;
+  role_id: string;
+  role_name: string;
+  role_color: string;
+  estimated_minutes: number | null;
+  impact: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type WeekReviewAction = "done" | "backlog" | "move_next_week";
+
+export interface WeekBalancePoint {
+  role_id: string;
+  role_name: string;
+  color: string;
+  value: number;
+}
+
+export interface WeekBalanceSnapshot {
+  current: WeekBalancePoint[];
+  target: WeekBalancePoint[];
+}

@@ -2,7 +2,9 @@ import { NavLink, Outlet } from "react-router-dom";
 import { UserButton } from "@clerk/clerk-react";
 
 const nav = [
-  { to: "/", label: "🏠 Today" },
+  { to: "/", label: "🏠 Weekly Planner" },
+  { to: "/weeks", label: "🗂️ Weeks" },
+  { to: "/today", label: "☀️ Today (legacy)" },
   { to: "/dashboard", label: "📊 Dashboard" },
   { to: "/roles", label: "🎭 Roles" },
   { to: "/goals", label: "🎯 Goals" },
