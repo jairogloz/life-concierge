@@ -35,6 +35,7 @@ type WeeksService interface {
 	GetWeek(ctx context.Context, userID, weekID string) (*domain.Week, error)
 	StartWeek(ctx context.Context, userID, weekID string) (*domain.Week, error)
 	EnterReview(ctx context.Context, userID, weekID string) (*domain.Week, error)
+	ReopenWeek(ctx context.Context, userID, weekID string) (*domain.Week, error)
 	CloseWeek(ctx context.Context, userID, weekID string) (*domain.Week, *domain.Week, error)
 
 	ListPriorities(ctx context.Context, userID, weekID string) ([]*domain.WeekPriority, error)

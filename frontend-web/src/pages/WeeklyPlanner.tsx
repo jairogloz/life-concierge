@@ -21,18 +21,19 @@ import {
 } from "recharts";
 
 const DAYS = [
+  { index: 7, label: "Sun" },
   { index: 1, label: "Mon" },
   { index: 2, label: "Tue" },
   { index: 3, label: "Wed" },
   { index: 4, label: "Thu" },
   { index: 5, label: "Fri" },
   { index: 6, label: "Sat" },
-  { index: 7, label: "Sun" },
 ];
 
 const START_HOUR = 6;
 const END_HOUR = 21;
 const WEEK_PRIORITY_TAG = "week_priority";
+const SLOT_ROW_HEIGHT_PX = 22;
 
 function fmtTime(minuteOfDay?: number | null) {
   if (minuteOfDay == null) return "";
@@ -44,6 +45,26 @@ function fmtTime(minuteOfDay?: number | null) {
 function toDateInput(value?: string | null) {
   if (!value) return "";
   return value.slice(0, 10);
+}
+
+function parseDateOnly(value: string) {
+  const raw = value.slice(0, 10);
+  const [year, month, day] = raw.split("-").map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
+}
+
+function sameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function addDays(date: Date, days: number) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
 }
 
 function weekLabel(week: Week) {
@@ -126,6 +147,7 @@ export default function WeeklyPlanner() {
     deadline: "",
   });
   const [taskSaving, setTaskSaving] = useState(false);
+  const [now, setNow] = useState(new Date());
 
   const selectedWeekId = searchParams.get("week") || "";
 
@@ -241,6 +263,43 @@ export default function WeeklyPlanner() {
     [allocations],
   );
 
+  const weekDays = useMemo(() => {
+    if (!currentWeek)
+      return [] as Array<{
+        index: number;
+        label: string;
+        date: Date;
+        isToday: boolean;
+      }>;
+    const start = parseDateOnly(currentWeek.starts_on);
+    const today = new Date();
+    return DAYS.map((day) => {
+      const dateOffset = day.index === 7 ? 6 : day.index - 1;
+      const date = addDays(start, dateOffset);
+      return {
+        index: day.index,
+        label: day.label,
+        date,
+        isToday: sameDay(date, today),
+      };
+    });
+  }, [currentWeek]);
+
+  const currentWeekTimeLineTop = useMemo(() => {
+    if (!currentWeek) return null;
+    const startDate = parseDateOnly(currentWeek.starts_on);
+    const endDate = parseDateOnly(currentWeek.ends_on);
+    if (now < startDate || now > addDays(endDate, 1)) return null;
+
+    const minuteOfDay = now.getHours() * 60 + now.getMinutes();
+    const minMinute = START_HOUR * 60;
+    const maxMinute = END_HOUR * 60 + 45;
+    if (minuteOfDay < minMinute || minuteOfDay > maxMinute) return null;
+
+    const slotsFromStart = (minuteOfDay - minMinute) / 15;
+    return slotsFromStart * SLOT_ROW_HEIGHT_PX;
+  }, [currentWeek, now]);
+
   const refreshWeekData = useCallback(
     async (weekID: string) => {
       const [allocRes, balanceRes] = await Promise.all([
@@ -306,6 +365,11 @@ export default function WeeklyPlanner() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!priorityRoleID && roles.length) {
@@ -482,10 +546,19 @@ export default function WeeklyPlanner() {
     }
   }
 
-  async function transition(action: "start" | "enter-review" | "close") {
+  async function transition(
+    action: "start" | "enter-review" | "close" | "reopen",
+  ) {
     if (!currentWeek) return;
-    await api.post(`/weeks/${currentWeek.id}/${action}`);
-    await load();
+    try {
+      await api.post(`/weeks/${currentWeek.id}/${action}`);
+      await load();
+    } catch (e: any) {
+      setError(
+        e?.response?.data?.error?.message ??
+          `Failed to ${action.replace("-", " ")} week.`,
+      );
+    }
   }
 
   async function applyReviewAction(action: WeekReviewAction) {
@@ -590,6 +663,14 @@ export default function WeeklyPlanner() {
               onClick={() => transition("close")}
             >
               Close week
+            </button>
+          )}
+          {currentWeek?.status === "closed" && (
+            <button
+              className="px-3 py-2 text-sm rounded-lg bg-slate-700 text-white"
+              onClick={() => transition("reopen")}
+            >
+              Re-open week
             </button>
           )}
         </div>
@@ -732,12 +813,24 @@ export default function WeeklyPlanner() {
                   <div className="px-2 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
                     Time
                   </div>
-                  {DAYS.map((day) => (
+                  {weekDays.map((day) => (
                     <div
                       key={day.index}
-                      className="px-2 py-2 text-xs font-semibold text-gray-700 border-l border-gray-100"
+                      className={`px-2 py-1.5 border-l border-gray-100 ${day.isToday ? "bg-indigo-50" : ""}`}
                     >
-                      {day.label}
+                      <p
+                        className={`text-xs font-semibold ${day.isToday ? "text-indigo-700" : "text-gray-700"}`}
+                      >
+                        {day.label}
+                      </p>
+                      <p
+                        className={`text-[10px] ${day.isToday ? "text-indigo-600" : "text-gray-500"}`}
+                      >
+                        {day.date.toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -746,7 +839,7 @@ export default function WeeklyPlanner() {
                   <div className="px-2 py-2 text-[10px] text-indigo-700 uppercase tracking-wide font-semibold">
                     Daily
                   </div>
-                  {DAYS.map((day) => {
+                  {weekDays.map((day) => {
                     const daily = dailyByDay.get(day.index) ?? [];
                     return (
                       <div
@@ -802,66 +895,85 @@ export default function WeeklyPlanner() {
                   })}
                 </div>
 
-                {quarterSlots.map((slot) => (
-                  <div
-                    key={slot}
-                    className="grid grid-cols-[68px_repeat(7,minmax(0,1fr))] border-b border-gray-100 min-h-[22px]"
-                  >
-                    <div className="px-2 py-0.5 text-[10px] text-gray-500 bg-white/80">
-                      {slot % 60 === 0
-                        ? `${String(Math.floor(slot / 60)).padStart(2, "0")}:00`
-                        : ""}
+                <div className="relative">
+                  {currentWeekTimeLineTop != null && (
+                    <div
+                      className="absolute left-[68px] right-0 z-20 pointer-events-none"
+                      style={{ top: `${currentWeekTimeLineTop}px` }}
+                    >
+                      <div className="h-px bg-red-500" />
+                      <div className="absolute -top-2 -left-14 text-[9px] font-semibold text-red-600 bg-white px-1 rounded">
+                        {now.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
                     </div>
-                    {DAYS.map((day) => {
-                      const key = `${day.index}-${slot}`;
-                      const slotItems = slotByDay.get(key) ?? [];
-                      return (
-                        <div
-                          key={key}
-                          className="border-l border-dashed border-gray-100 px-1 py-0.5"
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => onDrop(e, day.index, "timeslot", slot)}
-                        >
-                          {slotItems.map((item) => (
-                            <div
-                              key={item.id}
-                              draggable
-                              onDragStart={(e) =>
-                                onDragStartTask(e, item.task_id)
-                              }
-                              className="rounded bg-indigo-100 border border-indigo-200 px-1 py-0.5 text-[10px] text-indigo-900 mb-0.5"
-                            >
-                              <div className="flex items-center justify-between gap-1">
-                                <button
-                                  className="truncate text-left"
-                                  onClick={() => openTaskPanel(item.task_id)}
-                                >
-                                  {item.task_title}
-                                </button>
-                                <div className="flex items-center gap-1">
+                  )}
+
+                  {quarterSlots.map((slot) => (
+                    <div
+                      key={slot}
+                      className="grid grid-cols-[68px_repeat(7,minmax(0,1fr))] border-b border-gray-100 min-h-[22px]"
+                    >
+                      <div className="px-2 py-0.5 text-[10px] text-gray-500 bg-white/80">
+                        {slot % 60 === 0
+                          ? `${String(Math.floor(slot / 60)).padStart(2, "0")}:00`
+                          : ""}
+                      </div>
+                      {weekDays.map((day) => {
+                        const key = `${day.index}-${slot}`;
+                        const slotItems = slotByDay.get(key) ?? [];
+                        return (
+                          <div
+                            key={key}
+                            className={`border-l border-dashed border-gray-100 px-1 py-0.5 ${day.isToday ? "bg-indigo-50/30" : ""}`}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) =>
+                              onDrop(e, day.index, "timeslot", slot)
+                            }
+                          >
+                            {slotItems.map((item) => (
+                              <div
+                                key={item.id}
+                                draggable
+                                onDragStart={(e) =>
+                                  onDragStartTask(e, item.task_id)
+                                }
+                                className="rounded bg-indigo-100 border border-indigo-200 px-1 py-0.5 text-[10px] text-indigo-900 mb-0.5"
+                              >
+                                <div className="flex items-center justify-between gap-1">
                                   <button
-                                    className="text-emerald-700"
-                                    onClick={() => completeTask(item.task_id)}
-                                    title="Done"
+                                    className="truncate text-left"
+                                    onClick={() => openTaskPanel(item.task_id)}
                                   >
-                                    ✓
+                                    {item.task_title}
                                   </button>
-                                  <button
-                                    className="text-gray-600"
-                                    onClick={() => removeAllocation(item.id)}
-                                    title="Backlog"
-                                  >
-                                    ×
-                                  </button>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      className="text-emerald-700"
+                                      onClick={() => completeTask(item.task_id)}
+                                      title="Done"
+                                    >
+                                      ✓
+                                    </button>
+                                    <button
+                                      className="text-gray-600"
+                                      onClick={() => removeAllocation(item.id)}
+                                      title="Backlog"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
 

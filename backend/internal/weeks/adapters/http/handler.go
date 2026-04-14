@@ -2,6 +2,7 @@ package weekshttp
 
 import (
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -31,6 +32,7 @@ func RegisterRoutes(router fiber.Router, svc ports.WeeksService) {
 
 	router.Post("/weeks/:id/start", h.StartWeek)
 	router.Post("/weeks/:id/enter-review", h.EnterReview)
+	router.Post("/weeks/:id/reopen", h.ReopenWeek)
 	router.Post("/weeks/:id/close", h.CloseWeek)
 
 	router.Get("/weeks/:id/priorities", h.ListPriorities)
@@ -111,6 +113,7 @@ func handleWeeksError(c *fiber.Ctx, err error) error {
 	if err == nil {
 		return nil
 	}
+	log.Printf("weeks error: %v", err)
 	if errors.Is(err, domain.ErrWeekNotFound) {
 		return response.NotFound(c, "week not found")
 	}
@@ -178,7 +181,10 @@ func (h *Handler) UpdateWeek(c *fiber.Ctx) error {
 		}
 		return c.JSON(fiber.Map{"data": week})
 	case string(domain.WeekStatusReview):
-		week, err := h.svc.EnterReview(c.Context(), userID, weekID)
+		week, err := h.svc.ReopenWeek(c.Context(), userID, weekID)
+		if err != nil {
+			week, err = h.svc.EnterReview(c.Context(), userID, weekID)
+		}
 		if err != nil {
 			return handleWeeksError(c, err)
 		}
@@ -200,6 +206,15 @@ func (h *Handler) StartWeek(c *fiber.Ctx) error {
 func (h *Handler) EnterReview(c *fiber.Ctx) error {
 	userID := middleware.GetUserID(c)
 	week, err := h.svc.EnterReview(c.Context(), userID, c.Params("id"))
+	if err != nil {
+		return handleWeeksError(c, err)
+	}
+	return c.JSON(fiber.Map{"data": week})
+}
+
+func (h *Handler) ReopenWeek(c *fiber.Ctx) error {
+	userID := middleware.GetUserID(c)
+	week, err := h.svc.ReopenWeek(c.Context(), userID, c.Params("id"))
 	if err != nil {
 		return handleWeeksError(c, err)
 	}

@@ -74,6 +74,10 @@ func (s *Service) EnterReview(ctx context.Context, userID, weekID string) (*doma
 	return s.repo.UpdateWeekStatus(ctx, userID, weekID, []domain.WeekStatus{domain.WeekStatusActive}, domain.WeekStatusReview, time.Now().UTC())
 }
 
+func (s *Service) ReopenWeek(ctx context.Context, userID, weekID string) (*domain.Week, error) {
+	return s.repo.UpdateWeekStatus(ctx, userID, weekID, []domain.WeekStatus{domain.WeekStatusClosed}, domain.WeekStatusActive, time.Now().UTC())
+}
+
 func (s *Service) CloseWeek(ctx context.Context, userID, weekID string) (*domain.Week, *domain.Week, error) {
 	return s.repo.CloseWeekAndCreateNextPlanning(ctx, userID, weekID, time.Now().UTC())
 }

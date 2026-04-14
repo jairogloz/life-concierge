@@ -104,6 +104,7 @@ func (r *Repository) UpdateWeekStatus(ctx context.Context, userID, weekID string
 		UPDATE weeks
 		SET status = $1,
 			started_at = CASE WHEN $1 = 'active' THEN COALESCE(started_at, $2) ELSE started_at END,
+			closed_at = CASE WHEN $1 = 'closed' THEN COALESCE(closed_at, $2) ELSE NULL END,
 			updated_at = $2
 		WHERE id = $3::uuid AND user_id = $4
 	`, to, now, weekID, userID)
@@ -153,14 +154,6 @@ func (r *Repository) CloseWeekAndCreateNextPlanning(ctx context.Context, userID,
 	}
 
 	nextStart := startsOn.AddDate(0, 0, 7)
-	nextID := uuid.New().String()
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO weeks (id, user_id, starts_on, ends_on, status)
-		VALUES ($1::uuid, $2, $3::date, $4::date, 'planning')
-		ON CONFLICT (user_id, starts_on, ends_on) DO NOTHING
-	`, nextID, userID, nextStart, nextStart.AddDate(0, 0, 6)); err != nil {
-		return nil, nil, fmt.Errorf("weeks.CloseWeek create next: %w", err)
-	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, nil, fmt.Errorf("weeks.CloseWeek commit: %w", err)
@@ -170,13 +163,36 @@ func (r *Repository) CloseWeekAndCreateNextPlanning(ctx context.Context, userID,
 	if err != nil {
 		return nil, nil, err
 	}
+
+	nextID := uuid.New().String()
+	_, _ = r.db.Exec(ctx, `
+		INSERT INTO weeks (id, user_id, starts_on, ends_on, status)
+		VALUES ($1::uuid, $2, $3::date, $4::date, 'planning')
+		ON CONFLICT DO NOTHING
+	`, nextID, userID, nextStart, nextStart.AddDate(0, 0, 6))
+
 	next := &domain.Week{}
 	if err := r.db.QueryRow(ctx, `
 		SELECT id::text, user_id, starts_on::timestamptz, ends_on::timestamptz, status, started_at, closed_at, created_at, updated_at
 		FROM weeks
 		WHERE user_id = $1 AND starts_on = $2::date
 	`, userID, nextStart).Scan(&next.ID, &next.UserID, &next.StartsOn, &next.EndsOn, &next.Status, &next.StartedAt, &next.ClosedAt, &next.CreatedAt, &next.UpdatedAt); err != nil {
-		return nil, nil, fmt.Errorf("weeks.CloseWeek load next: %w", err)
+		if err != pgx.ErrNoRows {
+			return nil, nil, fmt.Errorf("weeks.CloseWeek load next: %w", err)
+		}
+
+		if err := r.db.QueryRow(ctx, `
+			SELECT id::text, user_id, starts_on::timestamptz, ends_on::timestamptz, status, started_at, closed_at, created_at, updated_at
+			FROM weeks
+			WHERE user_id = $1 AND status IN ('planning', 'active', 'review')
+			ORDER BY starts_on ASC
+			LIMIT 1
+		`, userID).Scan(&next.ID, &next.UserID, &next.StartsOn, &next.EndsOn, &next.Status, &next.StartedAt, &next.ClosedAt, &next.CreatedAt, &next.UpdatedAt); err != nil {
+			if err == pgx.ErrNoRows {
+				return closed, nil, nil
+			}
+			return nil, nil, fmt.Errorf("weeks.CloseWeek load fallback open week: %w", err)
+		}
 	}
 	return closed, next, nil
 }
