@@ -33,7 +33,12 @@ const DAYS = [
 const START_HOUR = 6;
 const END_HOUR = 21;
 const WEEK_PRIORITY_TAG = "week_priority";
+const WEEK_PRIORITY_TAG_PREFIX = "week_priority:";
 const SLOT_ROW_HEIGHT_PX = 22;
+
+function weekPriorityTagForWeek(weekID: string) {
+  return `${WEEK_PRIORITY_TAG_PREFIX}${weekID}`;
+}
 
 function fmtTime(minuteOfDay?: number | null) {
   if (minuteOfDay == null) return "";
@@ -221,6 +226,11 @@ export default function WeeklyPlanner() {
     return activeWeek;
   }, [weeks, activeWeek, selectedWeekId]);
 
+  const currentWeekPriorityTag = useMemo(() => {
+    if (!currentWeek) return "";
+    return weekPriorityTagForWeek(currentWeek.id);
+  }, [currentWeek]);
+
   const groupedGoals = useMemo(() => {
     const map = new Map<string, Goal[]>();
     goals.forEach((goal) => {
@@ -251,7 +261,11 @@ export default function WeeklyPlanner() {
 
   const visibleBacklog = useMemo(() => {
     return backlog.filter((task) => {
-      if ((task.context_tags ?? []).includes(WEEK_PRIORITY_TAG)) return false;
+      const tags = task.context_tags ?? [];
+      if (currentWeekPriorityTag && tags.includes(currentWeekPriorityTag))
+        return false;
+      if (currentWeek?.status === "active" && tags.includes(WEEK_PRIORITY_TAG))
+        return false;
       if (allocatedTaskIDs.has(task.id)) return false;
       if (backlogRoleFilter && task.primary_role_id !== backlogRoleFilter)
         return false;
@@ -260,13 +274,24 @@ export default function WeeklyPlanner() {
       if (task.status === "archived") return false;
       return true;
     });
-  }, [backlog, allocatedTaskIDs, backlogRoleFilter, importantOnly]);
+  }, [
+    backlog,
+    currentWeek,
+    currentWeekPriorityTag,
+    allocatedTaskIDs,
+    backlogRoleFilter,
+    importantOnly,
+  ]);
 
   const weekPriorityTasks = useMemo(() => {
     return backlog
       .filter((task) => {
-        if (!(task.context_tags ?? []).includes(WEEK_PRIORITY_TAG))
-          return false;
+        const tags = task.context_tags ?? [];
+        const inCurrentWeek =
+          currentWeekPriorityTag && tags.includes(currentWeekPriorityTag);
+        const inLegacyActiveWeek =
+          currentWeek?.status === "active" && tags.includes(WEEK_PRIORITY_TAG);
+        if (!inCurrentWeek && !inLegacyActiveWeek) return false;
         if (allocatedTaskIDs.has(task.id)) return false;
         return task.status !== "archived";
       })
@@ -276,7 +301,7 @@ export default function WeeklyPlanner() {
         if (aDone === bDone) return 0;
         return aDone ? 1 : -1;
       });
-  }, [backlog, allocatedTaskIDs]);
+  }, [backlog, currentWeek, currentWeekPriorityTag, allocatedTaskIDs]);
 
   const allocationByTaskID = useMemo(() => {
     const map = new Map<string, WeekAllocation>();
@@ -542,16 +567,24 @@ export default function WeeklyPlanner() {
     await Promise.all([refreshWeekData(currentWeek.id), refreshBacklogTasks()]);
   }
 
-  async function updateTaskPriorityTag(taskID: string, enable: boolean) {
+  async function updateTaskPriorityTag(
+    taskID: string,
+    weekID: string,
+    enable: boolean,
+  ) {
     const known = backlog.find((task) => task.id === taskID);
     const task = known ?? (await api.get<Task>(`/tasks/${taskID}`)).data;
-    const tags = [...(task.context_tags ?? [])];
-    const hasTag = tags.includes(WEEK_PRIORITY_TAG);
-    if (enable && !hasTag) tags.push(WEEK_PRIORITY_TAG);
-    if (!enable && hasTag) {
-      const idx = tags.indexOf(WEEK_PRIORITY_TAG);
-      tags.splice(idx, 1);
+    const weekTag = weekPriorityTagForWeek(weekID);
+    let tags = [...(task.context_tags ?? [])];
+    tags = tags.filter((tag) => tag !== WEEK_PRIORITY_TAG);
+
+    if (enable) {
+      tags = tags.filter((tag) => !tag.startsWith(WEEK_PRIORITY_TAG_PREFIX));
+      if (!tags.includes(weekTag)) tags.push(weekTag);
+    } else {
+      tags = tags.filter((tag) => tag !== weekTag);
     }
+
     await api.put(`/tasks/${taskID}`, { context_tags: tags });
   }
 
@@ -561,7 +594,7 @@ export default function WeeklyPlanner() {
     if (allocation) {
       await api.delete(`/weeks/${currentWeek.id}/allocations/${allocation.id}`);
     }
-    await updateTaskPriorityTag(taskID, false);
+    await updateTaskPriorityTag(taskID, currentWeek.id, false);
     await Promise.all([refreshWeekData(currentWeek.id), refreshBacklogTasks()]);
   }
 
@@ -571,7 +604,7 @@ export default function WeeklyPlanner() {
     if (allocation) {
       await api.delete(`/weeks/${currentWeek.id}/allocations/${allocation.id}`);
     }
-    await updateTaskPriorityTag(taskID, true);
+    await updateTaskPriorityTag(taskID, currentWeek.id, true);
     await Promise.all([refreshWeekData(currentWeek.id), refreshBacklogTasks()]);
   }
 
@@ -597,7 +630,10 @@ export default function WeeklyPlanner() {
           : addTaskForm.estimated_minutes
             ? Number(addTaskForm.estimated_minutes)
             : null,
-        context_tags: addTaskForm.is_week_priority ? [WEEK_PRIORITY_TAG] : [],
+        context_tags:
+          addTaskForm.is_week_priority && currentWeek
+            ? [weekPriorityTagForWeek(currentWeek.id)]
+            : [],
         deadline: null,
         soft_deadline: null,
         scheduled_date: addTaskForm.is_week_priority
@@ -612,9 +648,7 @@ export default function WeeklyPlanner() {
         "data" in createRes.data
           ? createRes.data.data
           : (createRes.data as Task);
-      if (addTaskForm.is_week_priority && createdTask?.id) {
-        await updateTaskPriorityTag(createdTask.id, true);
-      } else if (addTaskSlot && createdTask?.id) {
+      if (addTaskSlot && createdTask?.id) {
         await api.post(`/weeks/${currentWeek.id}/allocations`, {
           task_id: createdTask.id,
           day_of_week: addTaskSlot.dayOfWeek,
