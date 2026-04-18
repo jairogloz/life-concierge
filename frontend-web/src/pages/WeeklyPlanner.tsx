@@ -233,17 +233,25 @@ export default function WeeklyPlanner() {
       if (backlogRoleFilter && task.primary_role_id !== backlogRoleFilter)
         return false;
       if (importantOnly && task.impact < 4) return false;
+      if (task.status === "done") return false;
       if (task.status === "archived") return false;
       return true;
     });
   }, [backlog, backlogRoleFilter, importantOnly]);
 
+  const allocatedTaskIDs = useMemo(() => {
+    const ids = new Set<string>();
+    allocations.forEach((allocation) => ids.add(allocation.task_id));
+    return ids;
+  }, [allocations]);
+
   const weekPriorityTasks = useMemo(() => {
     return backlog.filter((task) => {
       if (!(task.context_tags ?? []).includes(WEEK_PRIORITY_TAG)) return false;
+      if (allocatedTaskIDs.has(task.id)) return false;
       return task.status !== "archived";
     });
-  }, [backlog]);
+  }, [backlog, allocatedTaskIDs]);
 
   const allocationByTaskID = useMemo(() => {
     const map = new Map<string, WeekAllocation>();
