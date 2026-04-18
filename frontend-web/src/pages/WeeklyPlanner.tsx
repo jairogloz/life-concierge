@@ -884,44 +884,59 @@ export default function WeeklyPlanner() {
         <p className="text-sm text-gray-500">No week selected.</p>
       ) : (
         <>
-          <div className="grid grid-cols-1 xl:grid-cols-6 gap-4 items-start">
-            <section className="xl:col-span-1 space-y-3 h-[78vh]">
-              <div className="bg-white rounded-xl border border-gray-200 p-3 h-[49%] overflow-auto">
-                <h2 className="font-semibold text-gray-900 mb-2">
-                  Roles & Goals
-                </h2>
-                <div className="space-y-2.5">
-                  {roles.map((role) => (
-                    <div
-                      key={role.id}
-                      className="rounded-lg border border-gray-100 p-2"
-                    >
-                      <p className="font-medium text-xs text-gray-900">
-                        {role.name}
-                      </p>
-                      <ul className="mt-1 space-y-1">
-                        {(groupedGoals.get(role.id) ?? [])
-                          .slice(0, 4)
-                          .map((goal) => (
-                            <li
-                              key={goal.id}
-                              className="text-[11px] text-gray-600 truncate"
-                            >
-                              • {goal.title}
-                            </li>
-                          ))}
-                        {(groupedGoals.get(role.id) ?? []).length === 0 && (
-                          <li className="text-[11px] text-gray-400">
-                            No goals yet
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  ))}
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 items-start">
+            <section className="xl:col-span-1 grid grid-rows-3 gap-3 h-[78vh]">
+              <div className="bg-white rounded-xl border border-gray-200 p-3 min-h-0 overflow-hidden">
+                <div className="flex flex-col gap-1 mb-2">
+                  <p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">
+                    Balance Radar
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-gray-600">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block" />
+                      Target
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-600 inline-block" />
+                      Current
+                    </span>
+                  </div>
                 </div>
+                {mergedRadar.length >= 3 ? (
+                  <ResponsiveContainer width="100%" height={170}>
+                    <RadarChart data={mergedRadar}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="role" tick={{ fontSize: 10 }} />
+                      <Radar
+                        dataKey="target"
+                        name="Target"
+                        stroke="#6366f1"
+                        fill="#6366f1"
+                        fillOpacity={0.12}
+                      />
+                      <Radar
+                        dataKey="current"
+                        name="Current"
+                        stroke="#16a34a"
+                        fill="#16a34a"
+                        fillOpacity={0.14}
+                      />
+                      <Tooltip
+                        formatter={(value) => [
+                          `${Number(value ?? 0).toFixed(0)}%`,
+                          "Balance",
+                        ]}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-xs text-gray-400">
+                    Create at least 3 roles to see radar guidance.
+                  </p>
+                )}
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-200 p-3 h-[49%] overflow-auto">
+              <div className="bg-white rounded-xl border border-gray-200 p-3 min-h-0 overflow-auto">
                 <h2 className="font-semibold text-gray-900">
                   Week priorities (tasks)
                 </h2>
@@ -980,11 +995,58 @@ export default function WeeklyPlanner() {
                   )}
                 </div>
               </div>
+
+              <div
+                className="bg-white rounded-xl border border-gray-200 p-3 min-h-0 overflow-auto"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={onDropToBacklog}
+              >
+                <h2 className="font-semibold text-gray-900">
+                  Backlog quick add
+                </h2>
+                <div className="mt-2 space-y-2">
+                  <select
+                    value={backlogRoleFilter}
+                    onChange={(e) => setBacklogRoleFilter(e.target.value)}
+                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg"
+                  >
+                    <option value="">All roles</option>
+                    {roles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="text-xs text-gray-600 flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={importantOnly}
+                      onChange={(e) => setImportantOnly(e.target.checked)}
+                    />
+                    Important only (impact ≥ 4)
+                  </label>
+                </div>
+                <div className="mt-3 space-y-1.5">
+                  {visibleBacklog.map((task) => (
+                    <div key={task.id}>
+                      {renderPlannerTaskCard({
+                        taskID: task.id,
+                        title: task.title,
+                        checked: task.status === "done",
+                        draggable: true,
+                        onToggle: (checked) => {
+                          void setTaskCompleted(task.id, checked);
+                        },
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </section>
 
-            <section className="xl:col-span-4 bg-white rounded-xl border border-gray-200 p-3 overflow-auto h-[78vh]">
-              <div className="min-w-[1040px] h-full">
-                <div className="grid grid-cols-[68px_repeat(7,minmax(0,1fr))] border-b border-gray-200 bg-white sticky top-0 z-10">
+            <section className="xl:col-span-4 bg-white rounded-xl border border-gray-200 p-3 overflow-y-auto overflow-x-hidden h-[78vh]">
+              <div className="w-full h-full">
+                <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-gray-200 bg-white sticky top-0 z-10">
                   <div className="px-2 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
                     Time
                   </div>
@@ -1010,7 +1072,7 @@ export default function WeeklyPlanner() {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-[68px_repeat(7,minmax(0,1fr))] border-b border-gray-200 bg-gray-50/60">
+                <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-gray-200 bg-gray-50/60">
                   <div className="px-2 py-2 text-[10px] text-indigo-700 uppercase tracking-wide font-semibold">
                     Daily
                   </div>
@@ -1046,7 +1108,7 @@ export default function WeeklyPlanner() {
                 <div className="relative">
                   {currentWeekTimeLineTop != null && (
                     <div
-                      className="absolute left-[68px] right-0 z-20 pointer-events-none"
+                      className="absolute left-[56px] right-0 z-20 pointer-events-none"
                       style={{ top: `${currentWeekTimeLineTop}px` }}
                     >
                       <div className="h-px bg-red-500" />
@@ -1062,7 +1124,7 @@ export default function WeeklyPlanner() {
                   {quarterSlots.map((slot) => (
                     <div
                       key={slot}
-                      className="grid grid-cols-[68px_repeat(7,minmax(0,1fr))] border-b border-gray-100 min-h-[22px]"
+                      className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-gray-100 min-h-[22px]"
                     >
                       <div className="px-2 py-0.5 text-[10px] text-gray-500 bg-white/80">
                         {slot % 60 === 0
@@ -1100,105 +1162,6 @@ export default function WeeklyPlanner() {
                             ))}
                           </div>
                         );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <section className="xl:col-span-1 space-y-3 h-[78vh]">
-              <div className="bg-white rounded-xl border border-gray-200 p-3 h-[36%]">
-                <div className="flex flex-col gap-1 mb-2">
-                  <p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">
-                    Balance Radar
-                  </p>
-                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-gray-600">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block" />
-                      Target
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-green-600 inline-block" />
-                      Current
-                    </span>
-                  </div>
-                </div>
-                {mergedRadar.length >= 3 ? (
-                  <ResponsiveContainer width="100%" height={190}>
-                    <RadarChart data={mergedRadar}>
-                      <PolarGrid />
-                      <PolarAngleAxis dataKey="role" tick={{ fontSize: 10 }} />
-                      <Radar
-                        dataKey="target"
-                        name="Target"
-                        stroke="#6366f1"
-                        fill="#6366f1"
-                        fillOpacity={0.12}
-                      />
-                      <Radar
-                        dataKey="current"
-                        name="Current"
-                        stroke="#16a34a"
-                        fill="#16a34a"
-                        fillOpacity={0.14}
-                      />
-                      <Tooltip
-                        formatter={(value) => [
-                          `${Number(value ?? 0).toFixed(0)}%`,
-                          "Balance",
-                        ]}
-                      />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="text-xs text-gray-400">
-                    Create at least 3 roles to see radar guidance.
-                  </p>
-                )}
-              </div>
-
-              <div
-                className="bg-white rounded-xl border border-gray-200 p-3 h-[62%] overflow-auto"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={onDropToBacklog}
-              >
-                <h2 className="font-semibold text-gray-900">
-                  Backlog quick add
-                </h2>
-                <div className="mt-2 space-y-2">
-                  <select
-                    value={backlogRoleFilter}
-                    onChange={(e) => setBacklogRoleFilter(e.target.value)}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg"
-                  >
-                    <option value="">All roles</option>
-                    {roles.map((role) => (
-                      <option key={role.id} value={role.id}>
-                        {role.name}
-                      </option>
-                    ))}
-                  </select>
-                  <label className="text-xs text-gray-600 flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={importantOnly}
-                      onChange={(e) => setImportantOnly(e.target.checked)}
-                    />
-                    Important only (impact ≥ 4)
-                  </label>
-                </div>
-                <div className="mt-3 space-y-1.5 max-h-[48vh] overflow-auto">
-                  {visibleBacklog.map((task) => (
-                    <div key={task.id}>
-                      {renderPlannerTaskCard({
-                        taskID: task.id,
-                        title: task.title,
-                        checked: task.status === "done",
-                        draggable: true,
-                        onToggle: (checked) => {
-                          void setTaskCompleted(task.id, checked);
-                        },
                       })}
                     </div>
                   ))}
