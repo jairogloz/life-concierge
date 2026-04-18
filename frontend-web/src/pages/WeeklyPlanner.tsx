@@ -243,9 +243,16 @@ export default function WeeklyPlanner() {
     return map;
   }, [goals]);
 
+  const allocatedTaskIDs = useMemo(() => {
+    const ids = new Set<string>();
+    allocations.forEach((allocation) => ids.add(allocation.task_id));
+    return ids;
+  }, [allocations]);
+
   const visibleBacklog = useMemo(() => {
     return backlog.filter((task) => {
       if ((task.context_tags ?? []).includes(WEEK_PRIORITY_TAG)) return false;
+      if (allocatedTaskIDs.has(task.id)) return false;
       if (backlogRoleFilter && task.primary_role_id !== backlogRoleFilter)
         return false;
       if (importantOnly && task.impact < 4) return false;
@@ -253,13 +260,7 @@ export default function WeeklyPlanner() {
       if (task.status === "archived") return false;
       return true;
     });
-  }, [backlog, backlogRoleFilter, importantOnly]);
-
-  const allocatedTaskIDs = useMemo(() => {
-    const ids = new Set<string>();
-    allocations.forEach((allocation) => ids.add(allocation.task_id));
-    return ids;
-  }, [allocations]);
+  }, [backlog, allocatedTaskIDs, backlogRoleFilter, importantOnly]);
 
   const weekPriorityTasks = useMemo(() => {
     return backlog
