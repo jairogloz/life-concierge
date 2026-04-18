@@ -233,7 +233,7 @@ export default function WeeklyPlanner() {
       if (backlogRoleFilter && task.primary_role_id !== backlogRoleFilter)
         return false;
       if (importantOnly && task.impact < 4) return false;
-      if (task.status === "done" || task.status === "archived") return false;
+      if (task.status === "archived") return false;
       return true;
     });
   }, [backlog, backlogRoleFilter, importantOnly]);
@@ -241,7 +241,7 @@ export default function WeeklyPlanner() {
   const weekPriorityTasks = useMemo(() => {
     return backlog.filter((task) => {
       if (!(task.context_tags ?? []).includes(WEEK_PRIORITY_TAG)) return false;
-      return task.status !== "done" && task.status !== "archived";
+      return task.status !== "archived";
     });
   }, [backlog]);
 
@@ -391,7 +391,7 @@ export default function WeeklyPlanner() {
       const [rolesRes, goalsRes, backlogRes, week] = await Promise.all([
         api.get<{ data: Role[] }>("/roles"),
         api.get<{ data: Goal[] }>("/goals"),
-        api.get<{ data: Task[] }>("/tasks?status=todo"),
+        api.get<{ data: Task[] }>("/tasks"),
         refreshWeeks(),
       ]);
 
@@ -453,7 +453,7 @@ export default function WeeklyPlanner() {
   }
 
   async function refreshBacklogTasks() {
-    const res = await api.get<{ data: Task[] }>("/tasks?status=todo");
+    const res = await api.get<{ data: Task[] }>("/tasks");
     setBacklog(res.data.data ?? []);
   }
 
@@ -483,7 +483,7 @@ export default function WeeklyPlanner() {
     await Promise.all([
       refreshWeekData(currentWeek.id),
       api
-        .get<{ data: Task[] }>("/tasks?status=todo")
+        .get<{ data: Task[] }>("/tasks")
         .then((res) => setBacklog(res.data.data ?? [])),
     ]);
   }
@@ -494,9 +494,11 @@ export default function WeeklyPlanner() {
     await refreshWeekData(currentWeek.id);
   }
 
-  async function completeTask(taskID: string) {
+  async function setTaskCompleted(taskID: string, completed: boolean) {
     if (!currentWeek) return;
-    await api.patch(`/tasks/${taskID}/complete`);
+    await api.put(`/tasks/${taskID}`, {
+      status: completed ? "done" : "todo",
+    });
     await Promise.all([refreshWeekData(currentWeek.id), refreshBacklogTasks()]);
   }
 
@@ -672,9 +674,9 @@ export default function WeeklyPlanner() {
         estimated_minutes: taskForm.estimated_minutes
           ? Number(taskForm.estimated_minutes)
           : null,
-        scheduled_date: taskForm.scheduled_date || null,
-        soft_deadline: taskForm.soft_deadline || null,
-        deadline: taskForm.deadline || null,
+        scheduled_date: toApiDateTime(taskForm.scheduled_date),
+        soft_deadline: toApiDateTime(taskForm.soft_deadline),
+        deadline: toApiDateTime(taskForm.deadline),
       };
       if (!taskForm.scheduled_date) payload.clear_scheduled_date = true;
       if (!taskForm.soft_deadline) payload.clear_soft_deadline = true;
@@ -683,10 +685,12 @@ export default function WeeklyPlanner() {
       await Promise.all([
         refreshWeekData(currentWeek.id),
         api
-          .get<{ data: Task[] }>("/tasks?status=todo")
+          .get<{ data: Task[] }>("/tasks")
           .then((res) => setBacklog(res.data.data ?? [])),
       ]);
       setTaskPanelOpen(false);
+    } catch (e: any) {
+      setError(e?.response?.data?.error?.message ?? "Failed to save task.");
     } finally {
       setTaskSaving(false);
     }
@@ -721,9 +725,45 @@ export default function WeeklyPlanner() {
     await Promise.all([
       refreshWeekData(currentWeek.id),
       api
-        .get<{ data: Task[] }>("/tasks?status=todo")
+        .get<{ data: Task[] }>("/tasks")
         .then((res) => setBacklog(res.data.data ?? [])),
     ]);
+  }
+
+  function renderPlannerTaskCard(props: {
+    taskID: string;
+    title: string;
+    checked: boolean;
+    draggable?: boolean;
+    className?: string;
+    onToggle: (checked: boolean) => void;
+  }) {
+    return (
+      <div
+        draggable={Boolean(props.draggable)}
+        onDragStart={
+          props.draggable ? (e) => onDragStartTask(e, props.taskID) : undefined
+        }
+        className={`rounded-md border border-gray-200 bg-white p-1.5 ${props.className ?? ""}`}
+      >
+        <div className="flex items-center gap-2">
+          <button
+            className="flex-1 min-w-0 text-xs font-medium text-gray-800 truncate text-left"
+            onClick={() => openTaskPanel(props.taskID)}
+          >
+            {props.title}
+          </button>
+          <input
+            type="checkbox"
+            checked={props.checked}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => props.onToggle(e.target.checked)}
+            className="h-3.5 w-3.5 accent-indigo-600"
+            title={props.checked ? "Mark not done" : "Mark done"}
+          />
+        </div>
+      </div>
+    );
   }
 
   function onDragStartTask(ev: React.DragEvent, taskID: string) {
@@ -913,41 +953,16 @@ export default function WeeklyPlanner() {
                   onDrop={onDropToWeekPriorities}
                 >
                   {weekPriorityTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      draggable
-                      onDragStart={(e) => onDragStartTask(e, task.id)}
-                      className="rounded-md border border-indigo-200 bg-white p-1.5"
-                    >
-                      <button
-                        className="text-xs font-medium text-gray-800 truncate text-left w-full"
-                        onClick={() => openTaskPanel(task.id)}
-                      >
-                        {task.title}
-                      </button>
-                      <div className="mt-0.5 flex items-center justify-between text-[10px]">
-                        <button
-                          className="text-emerald-700"
-                          onClick={() => completeTask(task.id)}
-                          title="Mark done"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          className="text-gray-600"
-                          onClick={() => moveTaskToBacklog(task.id)}
-                          title="Move to backlog"
-                        >
-                          ↶
-                        </button>
-                        <button
-                          className="text-indigo-600"
-                          onClick={() => openTaskPanel(task.id)}
-                          title="View/edit"
-                        >
-                          ✎
-                        </button>
-                      </div>
+                    <div key={task.id}>
+                      {renderPlannerTaskCard({
+                        taskID: task.id,
+                        title: task.title,
+                        checked: task.status === "done",
+                        draggable: true,
+                        onToggle: (checked) => {
+                          void setTaskCompleted(task.id, checked);
+                        },
+                      })}
                     </div>
                   ))}
                   {weekPriorityTasks.length === 0 && (
@@ -1002,43 +1017,16 @@ export default function WeeklyPlanner() {
                       >
                         <div className="space-y-1">
                           {daily.map((item) => (
-                            <div
-                              key={item.id}
-                              draggable
-                              onDragStart={(e) =>
-                                onDragStartTask(e, item.task_id)
-                              }
-                              className="rounded bg-white border border-indigo-200 p-1"
-                            >
-                              <button
-                                className="text-[10px] text-left w-full truncate font-medium text-gray-800"
-                                onClick={() => openTaskPanel(item.task_id)}
-                              >
-                                {item.task_title}
-                              </button>
-                              <div className="mt-0.5 flex items-center justify-between text-[9px]">
-                                <button
-                                  className="text-emerald-700"
-                                  onClick={() => completeTask(item.task_id)}
-                                  title="Done"
-                                >
-                                  ✓
-                                </button>
-                                <button
-                                  className="text-gray-600"
-                                  onClick={() => removeAllocation(item.id)}
-                                  title="Backlog"
-                                >
-                                  ↶
-                                </button>
-                                <button
-                                  className="text-indigo-600"
-                                  onClick={() => openTaskPanel(item.task_id)}
-                                  title="View/edit"
-                                >
-                                  ✎
-                                </button>
-                              </div>
+                            <div key={item.id}>
+                              {renderPlannerTaskCard({
+                                taskID: item.task_id,
+                                title: item.task_title,
+                                checked: item.task_status === "done",
+                                draggable: true,
+                                onToggle: (checked) => {
+                                  void setTaskCompleted(item.task_id, checked);
+                                },
+                              })}
                             </div>
                           ))}
                         </div>
@@ -1086,38 +1074,20 @@ export default function WeeklyPlanner() {
                             }
                           >
                             {slotItems.map((item) => (
-                              <div
-                                key={item.id}
-                                draggable
-                                onDragStart={(e) =>
-                                  onDragStartTask(e, item.task_id)
-                                }
-                                className="rounded bg-indigo-100 border border-indigo-200 px-1 py-0.5 text-[10px] text-indigo-900 mb-0.5"
-                              >
-                                <div className="flex items-center justify-between gap-1">
-                                  <button
-                                    className="truncate text-left"
-                                    onClick={() => openTaskPanel(item.task_id)}
-                                  >
-                                    {item.task_title}
-                                  </button>
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      className="text-emerald-700"
-                                      onClick={() => completeTask(item.task_id)}
-                                      title="Done"
-                                    >
-                                      ✓
-                                    </button>
-                                    <button
-                                      className="text-gray-600"
-                                      onClick={() => removeAllocation(item.id)}
-                                      title="Backlog"
-                                    >
-                                      ×
-                                    </button>
-                                  </div>
-                                </div>
+                              <div key={item.id} className="mb-0.5">
+                                {renderPlannerTaskCard({
+                                  taskID: item.task_id,
+                                  title: item.task_title,
+                                  checked: item.task_status === "done",
+                                  draggable: true,
+                                  className: "p-1",
+                                  onToggle: (checked) => {
+                                    void setTaskCompleted(
+                                      item.task_id,
+                                      checked,
+                                    );
+                                  },
+                                })}
                               </div>
                             ))}
                           </div>
@@ -1212,39 +1182,16 @@ export default function WeeklyPlanner() {
                 </div>
                 <div className="mt-3 space-y-1.5 max-h-[48vh] overflow-auto">
                   {visibleBacklog.map((task) => (
-                    <div
-                      key={task.id}
-                      draggable
-                      onDragStart={(e) => onDragStartTask(e, task.id)}
-                      className="rounded-lg border border-gray-200 p-1.5 bg-gray-50 cursor-grab"
-                    >
-                      <button
-                        className="text-xs font-medium text-gray-800 truncate text-left w-full"
-                        onClick={() => openTaskPanel(task.id)}
-                      >
-                        {task.title}
-                      </button>
-                      <div className="text-[10px] text-gray-500 mt-0.5 flex items-center justify-between">
-                        <span>
-                          Impact {task.impact} · Effort {task.effort}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <button
-                            className="text-emerald-700"
-                            onClick={() => completeTask(task.id)}
-                            title="Mark done"
-                          >
-                            ✓
-                          </button>
-                          <button
-                            className="text-indigo-700"
-                            onClick={() => moveTaskToWeekPriorities(task.id)}
-                            title="Move to week priorities"
-                          >
-                            ★
-                          </button>
-                        </div>
-                      </div>
+                    <div key={task.id}>
+                      {renderPlannerTaskCard({
+                        taskID: task.id,
+                        title: task.title,
+                        checked: task.status === "done",
+                        draggable: true,
+                        onToggle: (checked) => {
+                          void setTaskCompleted(task.id, checked);
+                        },
+                      })}
                     </div>
                   ))}
                 </div>
@@ -1474,7 +1421,7 @@ export default function WeeklyPlanner() {
                       className="px-3 py-1.5 text-xs rounded-lg border border-gray-300"
                       onClick={() => {
                         if (selectedTaskID) {
-                          void completeTask(selectedTaskID);
+                          void setTaskCompleted(selectedTaskID, true);
                           setTaskPanelOpen(false);
                         }
                       }}
