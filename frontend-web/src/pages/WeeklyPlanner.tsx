@@ -67,6 +67,35 @@ function addDays(date: Date, days: number) {
   return copy;
 }
 
+function formatDateOnly(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toApiDateTime(value?: string | null) {
+  if (!value) return null;
+  return `${value}T00:00:00Z`;
+}
+
+function parseTimeInputToMinute(value?: string | null) {
+  if (!value) return null;
+  const [hourRaw, minuteRaw] = value.split(":");
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function minuteToTimeInput(minuteOfDay?: number | null) {
+  if (minuteOfDay == null) return "";
+  const hour = Math.floor(minuteOfDay / 60);
+  const minute = minuteOfDay % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
 function weekLabel(week: Week) {
   return `${week.starts_on.slice(0, 10)} → ${week.ends_on.slice(0, 10)} (${week.status})`;
 }
@@ -147,6 +176,23 @@ export default function WeeklyPlanner() {
     deadline: "",
   });
   const [taskSaving, setTaskSaving] = useState(false);
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
+  const [addTaskSaving, setAddTaskSaving] = useState(false);
+  const [addTaskSlot, setAddTaskSlot] = useState<{
+    dayOfWeek: number;
+    slotMinute: number;
+  } | null>(null);
+  const [addTaskForm, setAddTaskForm] = useState({
+    title: "",
+    description: "",
+    primary_role_id: "",
+    goal_id: "",
+    impact: 3,
+    effort: 3,
+    estimated_minutes: "",
+    scheduled_date: "",
+    start_time: "",
+  });
   const [now, setNow] = useState(new Date());
 
   const selectedWeekId = searchParams.get("week") || "";
@@ -274,7 +320,7 @@ export default function WeeklyPlanner() {
     const start = parseDateOnly(currentWeek.starts_on);
     const today = new Date();
     return DAYS.map((day) => {
-      const dateOffset = day.index === 7 ? 6 : day.index - 1;
+      const dateOffset = day.index === 7 ? 0 : day.index;
       const date = addDays(start, dateOffset);
       return {
         index: day.index,
@@ -377,6 +423,35 @@ export default function WeeklyPlanner() {
     }
   }, [priorityRoleID, roles]);
 
+  useEffect(() => {
+    if (!addTaskForm.primary_role_id && roles.length) {
+      setAddTaskForm((prev) => ({ ...prev, primary_role_id: roles[0].id }));
+    }
+  }, [addTaskForm.primary_role_id, roles]);
+
+  function dateForWeekDay(dayOfWeek: number) {
+    if (!currentWeek) return "";
+    const start = parseDateOnly(currentWeek.starts_on);
+    const offset = dayOfWeek === 7 ? 0 : dayOfWeek;
+    return formatDateOnly(addDays(start, offset));
+  }
+
+  function openAddTask(slot?: { dayOfWeek: number; slotMinute: number }) {
+    setAddTaskSlot(slot ?? null);
+    setAddTaskForm({
+      title: "",
+      description: "",
+      primary_role_id: roles[0]?.id ?? "",
+      goal_id: "",
+      impact: 3,
+      effort: 3,
+      estimated_minutes: slot ? "60" : "",
+      scheduled_date: slot ? dateForWeekDay(slot.dayOfWeek) : "",
+      start_time: slot ? minuteToTimeInput(slot.slotMinute) : "",
+    });
+    setAddTaskOpen(true);
+  }
+
   async function refreshBacklogTasks() {
     const res = await api.get<{ data: Task[] }>("/tasks?status=todo");
     setBacklog(res.data.data ?? []);
@@ -476,6 +551,70 @@ export default function WeeklyPlanner() {
     });
     setPriorityInput("");
     await refreshBacklogTasks();
+  }
+
+  async function createTaskFromPlanner() {
+    if (!currentWeek || !addTaskForm.title.trim() || !addTaskForm.primary_role_id)
+      return;
+    setAddTaskSaving(true);
+    try {
+      const createRes = await api.post<Task | { data: Task }>("/tasks", {
+        title: addTaskForm.title.trim(),
+        description: addTaskForm.description,
+        primary_role_id: addTaskForm.primary_role_id,
+        goal_id: addTaskForm.goal_id || null,
+        task_type: "one_time",
+        impact: addTaskForm.impact,
+        effort: addTaskForm.effort,
+        estimated_minutes: addTaskSlot
+          ? 60
+          : addTaskForm.estimated_minutes
+            ? Number(addTaskForm.estimated_minutes)
+            : null,
+        context_tags: [],
+        deadline: null,
+        soft_deadline: null,
+        scheduled_date: toApiDateTime(addTaskForm.scheduled_date),
+      });
+
+      const createdTask =
+        "data" in createRes.data
+          ? createRes.data.data
+          : (createRes.data as Task);
+      if (addTaskSlot && createdTask?.id) {
+        await api.post(`/weeks/${currentWeek.id}/allocations`, {
+          task_id: createdTask.id,
+          day_of_week: addTaskSlot.dayOfWeek,
+          lane: "timeslot",
+          slot_minute_of_day: addTaskSlot.slotMinute,
+        });
+      } else if (createdTask?.id && addTaskForm.scheduled_date) {
+        const scheduled = parseDateOnly(addTaskForm.scheduled_date);
+        const weekStart = parseDateOnly(currentWeek.starts_on);
+        const weekEnd = parseDateOnly(currentWeek.ends_on);
+        if (scheduled >= weekStart && scheduled <= weekEnd) {
+          const dayOfWeek = scheduled.getDay() === 0 ? 7 : scheduled.getDay();
+          const slotMinute = parseTimeInputToMinute(addTaskForm.start_time);
+          await api.post(`/weeks/${currentWeek.id}/allocations`, {
+            task_id: createdTask.id,
+            day_of_week: dayOfWeek,
+            lane: slotMinute != null ? "timeslot" : "daily_priority",
+            slot_minute_of_day: slotMinute,
+          });
+        }
+      }
+
+      await Promise.all([refreshBacklogTasks(), refreshWeekData(currentWeek.id)]);
+      setAddTaskOpen(false);
+      setAddTaskSlot(null);
+    } catch (e: any) {
+      setError(
+        e?.response?.data?.error?.message ??
+          "Failed to create task from weekly planner.",
+      );
+    } finally {
+      setAddTaskSaving(false);
+    }
   }
 
   async function openTaskPanel(taskID: string) {
@@ -673,6 +812,12 @@ export default function WeeklyPlanner() {
               Re-open week
             </button>
           )}
+          <button
+            className="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white hover:bg-gray-50"
+            onClick={() => openAddTask()}
+          >
+            Add task
+          </button>
         </div>
       </div>
 
@@ -1339,6 +1484,234 @@ export default function WeeklyPlanner() {
                       }
                     >
                       {taskSaving ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          )}
+
+          {addTaskOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-black/20"
+              onClick={() => setAddTaskOpen(false)}
+            >
+              <aside
+                className="absolute right-0 top-0 h-full w-full max-w-md bg-white border-l border-gray-200 shadow-xl p-4 overflow-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      Add task
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      {addTaskSlot
+                        ? "Hour slot selected — this task is scheduled for 1 hour."
+                        : "Create a new task directly from the planner."}
+                    </p>
+                  </div>
+                  <button
+                    className="text-gray-500"
+                    onClick={() => setAddTaskOpen(false)}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {addTaskSlot && (
+                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800 mb-3">
+                    <p>
+                      {DAYS.find((day) => day.index === addTaskSlot.dayOfWeek)
+                        ?.label ?? "Day"}{" "}
+                      at {fmtTime(addTaskSlot.slotMinute)}
+                    </p>
+                    <p>Estimated time: 60 minutes</p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Title</label>
+                    <input
+                      value={addTaskForm.title}
+                      onChange={(e) =>
+                        setAddTaskForm((prev) => ({
+                          ...prev,
+                          title: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-gray-500">Description</label>
+                    <textarea
+                      value={addTaskForm.description}
+                      onChange={(e) =>
+                        setAddTaskForm((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg resize-none"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-500">Role</label>
+                      <select
+                        value={addTaskForm.primary_role_id}
+                        onChange={(e) =>
+                          setAddTaskForm((prev) => ({
+                            ...prev,
+                            primary_role_id: e.target.value,
+                            goal_id:
+                              prev.goal_id &&
+                              !(
+                                groupedGoals
+                                  .get(e.target.value)
+                                  ?.some((goal) => goal.id === prev.goal_id) ??
+                                false
+                              )
+                                ? ""
+                                : prev.goal_id,
+                          }))
+                        }
+                        className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg"
+                      >
+                        <option value="">Role…</option>
+                        {roles.map((role) => (
+                          <option key={role.id} value={role.id}>
+                            {role.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-gray-500">Goal</label>
+                      <select
+                        value={addTaskForm.goal_id}
+                        onChange={(e) =>
+                          setAddTaskForm((prev) => ({
+                            ...prev,
+                            goal_id: e.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg"
+                      >
+                        <option value="">No goal</option>
+                        {(groupedGoals.get(addTaskForm.primary_role_id) ?? [])
+                          .map((goal) => (
+                            <option key={goal.id} value={goal.id}>
+                              {goal.title}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-500">Impact</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={5}
+                        value={addTaskForm.impact}
+                        onChange={(e) =>
+                          setAddTaskForm((prev) => ({
+                            ...prev,
+                            impact: Number(e.target.value) || 1,
+                          }))
+                        }
+                        className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Effort</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={5}
+                        value={addTaskForm.effort}
+                        onChange={(e) =>
+                          setAddTaskForm((prev) => ({
+                            ...prev,
+                            effort: Number(e.target.value) || 1,
+                          }))
+                        }
+                        className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">Mins</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={addTaskSlot ? "60" : addTaskForm.estimated_minutes}
+                        onChange={(e) =>
+                          setAddTaskForm((prev) => ({
+                            ...prev,
+                            estimated_minutes: e.target.value,
+                          }))
+                        }
+                        disabled={Boolean(addTaskSlot)}
+                        className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:text-gray-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-gray-500">Scheduled date</label>
+                    <input
+                      type="date"
+                      value={addTaskForm.scheduled_date}
+                      onChange={(e) =>
+                        setAddTaskForm((prev) => ({
+                          ...prev,
+                          scheduled_date: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-gray-500">Start time</label>
+                    <input
+                      type="time"
+                      step={900}
+                      value={addTaskForm.start_time}
+                      onChange={(e) =>
+                        setAddTaskForm((prev) => ({
+                          ...prev,
+                          start_time: e.target.value,
+                        }))
+                      }
+                      disabled={Boolean(addTaskSlot)}
+                      className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:text-gray-500"
+                    />
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      If set (with a date inside this week), the task is added to that timeslot.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button
+                      className="px-3 py-1.5 text-xs rounded-lg bg-indigo-600 text-white disabled:opacity-60"
+                      onClick={createTaskFromPlanner}
+                      disabled={
+                        addTaskSaving ||
+                        !addTaskForm.title.trim() ||
+                        !addTaskForm.primary_role_id
+                      }
+                    >
+                      {addTaskSaving ? "Creating..." : "Create task"}
                     </button>
                   </div>
                 </div>
