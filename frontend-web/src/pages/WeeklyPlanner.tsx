@@ -79,6 +79,22 @@ function toApiDateTime(value?: string | null) {
   return `${value}T00:00:00Z`;
 }
 
+function toApiDateTimeWithTime(
+  dateValue?: string | null,
+  timeValue?: string | null,
+) {
+  if (!dateValue) return null;
+  if (!timeValue) return `${dateValue}T00:00:00Z`;
+  return `${dateValue}T${timeValue}:00Z`;
+}
+
+function toTimeInput(value?: string | null) {
+  if (!value) return "";
+  const tIndex = value.indexOf("T");
+  if (tIndex < 0 || value.length < tIndex + 6) return "";
+  return value.slice(tIndex + 1, tIndex + 6);
+}
+
 function parseTimeInputToMinute(value?: string | null) {
   if (!value) return null;
   const [hourRaw, minuteRaw] = value.split(":");
@@ -154,8 +170,6 @@ export default function WeeklyPlanner() {
     target: [],
   });
 
-  const [priorityInput, setPriorityInput] = useState("");
-  const [priorityRoleID, setPriorityRoleID] = useState("");
   const [backlogRoleFilter, setBacklogRoleFilter] = useState("");
   const [importantOnly, setImportantOnly] = useState(false);
   const [reviewSelected, setReviewSelected] = useState<Record<string, boolean>>(
@@ -172,6 +186,7 @@ export default function WeeklyPlanner() {
     effort: 3,
     estimated_minutes: "",
     scheduled_date: "",
+    start_time: "",
     soft_deadline: "",
     deadline: "",
   });
@@ -192,6 +207,7 @@ export default function WeeklyPlanner() {
     estimated_minutes: "",
     scheduled_date: "",
     start_time: "",
+    is_week_priority: false,
   });
   const [now, setNow] = useState(new Date());
 
@@ -246,11 +262,19 @@ export default function WeeklyPlanner() {
   }, [allocations]);
 
   const weekPriorityTasks = useMemo(() => {
-    return backlog.filter((task) => {
-      if (!(task.context_tags ?? []).includes(WEEK_PRIORITY_TAG)) return false;
-      if (allocatedTaskIDs.has(task.id)) return false;
-      return task.status !== "archived";
-    });
+    return backlog
+      .filter((task) => {
+        if (!(task.context_tags ?? []).includes(WEEK_PRIORITY_TAG))
+          return false;
+        if (allocatedTaskIDs.has(task.id)) return false;
+        return task.status !== "archived";
+      })
+      .sort((a, b) => {
+        const aDone = a.status === "done";
+        const bDone = b.status === "done";
+        if (aDone === bDone) return 0;
+        return aDone ? 1 : -1;
+      });
   }, [backlog, allocatedTaskIDs]);
 
   const allocationByTaskID = useMemo(() => {
@@ -426,12 +450,6 @@ export default function WeeklyPlanner() {
   }, []);
 
   useEffect(() => {
-    if (!priorityRoleID && roles.length) {
-      setPriorityRoleID(roles[0].id);
-    }
-  }, [priorityRoleID, roles]);
-
-  useEffect(() => {
     if (!addTaskForm.primary_role_id && roles.length) {
       setAddTaskForm((prev) => ({ ...prev, primary_role_id: roles[0].id }));
     }
@@ -444,8 +462,12 @@ export default function WeeklyPlanner() {
     return formatDateOnly(addDays(start, offset));
   }
 
-  function openAddTask(slot?: { dayOfWeek: number; slotMinute: number }) {
+  function openAddTask(
+    slot?: { dayOfWeek: number; slotMinute: number },
+    preselectWeekPriority = false,
+  ) {
     setAddTaskSlot(slot ?? null);
+    const isWeekPriority = preselectWeekPriority && !slot;
     setAddTaskForm({
       title: "",
       description: "",
@@ -454,8 +476,17 @@ export default function WeeklyPlanner() {
       impact: 3,
       effort: 3,
       estimated_minutes: slot ? "60" : "",
-      scheduled_date: slot ? dateForWeekDay(slot.dayOfWeek) : "",
-      start_time: slot ? minuteToTimeInput(slot.slotMinute) : "",
+      scheduled_date: isWeekPriority
+        ? ""
+        : slot
+          ? dateForWeekDay(slot.dayOfWeek)
+          : "",
+      start_time: isWeekPriority
+        ? ""
+        : slot
+          ? minuteToTimeInput(slot.slotMinute)
+          : "",
+      is_week_priority: isWeekPriority,
     });
     setAddTaskOpen(true);
   }
@@ -543,26 +574,6 @@ export default function WeeklyPlanner() {
     await Promise.all([refreshWeekData(currentWeek.id), refreshBacklogTasks()]);
   }
 
-  async function createPriorityTask() {
-    if (!priorityInput.trim() || !priorityRoleID) return;
-    await api.post("/tasks", {
-      title: priorityInput.trim(),
-      description: "",
-      primary_role_id: priorityRoleID,
-      goal_id: null,
-      task_type: "one_time",
-      impact: 4,
-      effort: 3,
-      estimated_minutes: null,
-      context_tags: [WEEK_PRIORITY_TAG],
-      deadline: null,
-      soft_deadline: null,
-      scheduled_date: null,
-    });
-    setPriorityInput("");
-    await refreshBacklogTasks();
-  }
-
   async function createTaskFromPlanner() {
     if (
       !currentWeek ||
@@ -585,17 +596,24 @@ export default function WeeklyPlanner() {
           : addTaskForm.estimated_minutes
             ? Number(addTaskForm.estimated_minutes)
             : null,
-        context_tags: [],
+        context_tags: addTaskForm.is_week_priority ? [WEEK_PRIORITY_TAG] : [],
         deadline: null,
         soft_deadline: null,
-        scheduled_date: toApiDateTime(addTaskForm.scheduled_date),
+        scheduled_date: addTaskForm.is_week_priority
+          ? null
+          : toApiDateTimeWithTime(
+              addTaskForm.scheduled_date,
+              addTaskForm.start_time,
+            ),
       });
 
       const createdTask =
         "data" in createRes.data
           ? createRes.data.data
           : (createRes.data as Task);
-      if (addTaskSlot && createdTask?.id) {
+      if (addTaskForm.is_week_priority && createdTask?.id) {
+        await updateTaskPriorityTag(createdTask.id, true);
+      } else if (addTaskSlot && createdTask?.id) {
         await api.post(`/weeks/${currentWeek.id}/allocations`, {
           task_id: createdTask.id,
           day_of_week: addTaskSlot.dayOfWeek,
@@ -653,6 +671,7 @@ export default function WeeklyPlanner() {
         estimated_minutes:
           task.estimated_minutes != null ? String(task.estimated_minutes) : "",
         scheduled_date: toDateInput(task.scheduled_date),
+        start_time: toTimeInput(task.scheduled_date),
         soft_deadline: toDateInput(task.soft_deadline),
         deadline: toDateInput(task.deadline),
       });
@@ -682,7 +701,10 @@ export default function WeeklyPlanner() {
         estimated_minutes: taskForm.estimated_minutes
           ? Number(taskForm.estimated_minutes)
           : null,
-        scheduled_date: toApiDateTime(taskForm.scheduled_date),
+        scheduled_date: toApiDateTimeWithTime(
+          taskForm.scheduled_date,
+          taskForm.start_time,
+        ),
         soft_deadline: toApiDateTime(taskForm.soft_deadline),
         deadline: toApiDateTime(taskForm.deadline),
       };
@@ -936,42 +958,32 @@ export default function WeeklyPlanner() {
                 )}
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-200 p-3 min-h-0 overflow-auto">
-                <h2 className="font-semibold text-gray-900">
-                  Week priorities (tasks)
-                </h2>
-                <p className="text-[11px] text-gray-500">
-                  Create or drop tasks here. Drag to backlog to remove from
-                  weekly focus.
-                </p>
-                <div className="mt-2 grid grid-cols-[1fr_110px_52px] gap-1.5">
-                  <input
-                    value={priorityInput}
-                    onChange={(e) => setPriorityInput(e.target.value)}
-                    placeholder="New priority task"
-                    className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg"
-                  />
-                  <select
-                    value={priorityRoleID}
-                    onChange={(e) => setPriorityRoleID(e.target.value)}
-                    className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg"
-                  >
-                    {roles.map((role) => (
-                      <option key={role.id} value={role.id}>
-                        {role.name}
-                      </option>
-                    ))}
-                  </select>
+              <div className="bg-white rounded-xl border border-gray-200 p-3 min-h-0 overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="font-semibold text-gray-900">
+                      Week priorities
+                    </h2>
+                    <div className="relative group">
+                      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-semibold text-gray-500 cursor-help">
+                        i
+                      </span>
+                      <div className="pointer-events-none absolute left-1/2 top-5 z-20 hidden w-52 -translate-x-1/2 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-[10px] text-gray-600 shadow-sm group-hover:block">
+                        Create or drop tasks here. Drag to backlog to remove
+                        from weekly focus.
+                      </div>
+                    </div>
+                  </div>
                   <button
-                    onClick={createPriorityTask}
-                    className="px-2 py-1.5 text-xs rounded-lg bg-indigo-600 text-white"
+                    className="px-2.5 py-1 text-xs rounded-lg bg-indigo-600 text-white"
+                    onClick={() => openAddTask(undefined, true)}
                   >
                     Add
                   </button>
                 </div>
 
                 <div
-                  className="mt-2.5 space-y-1.5 min-h-20 rounded-lg border border-dashed border-indigo-300 bg-indigo-50 p-1.5"
+                  className="mt-2 space-y-1.5 flex-1 overflow-auto"
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={onDropToWeekPriorities}
                 >
@@ -1339,6 +1351,23 @@ export default function WeeklyPlanner() {
                         className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg"
                       />
                     </div>
+                    <div>
+                      <label className="text-xs text-gray-500">
+                        Start time
+                      </label>
+                      <input
+                        type="time"
+                        step={900}
+                        value={taskForm.start_time}
+                        onChange={(e) =>
+                          setTaskForm((prev) => ({
+                            ...prev,
+                            start_time: e.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg"
+                      />
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs text-gray-500">
@@ -1595,6 +1624,35 @@ export default function WeeklyPlanner() {
                   </div>
 
                   <div>
+                    <label className="text-xs text-gray-500 flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={addTaskForm.is_week_priority}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setAddTaskForm((prev) => ({
+                            ...prev,
+                            is_week_priority: checked,
+                            scheduled_date: checked ? "" : prev.scheduled_date,
+                            start_time: checked ? "" : prev.start_time,
+                          }));
+                          if (checked) setAddTaskSlot(null);
+                        }}
+                      />
+                      <span>Is Week Priority</span>
+                      <span className="relative group inline-flex">
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-semibold text-gray-500 cursor-help">
+                          i
+                        </span>
+                        <span className="pointer-events-none absolute left-1/2 top-5 z-20 hidden w-56 -translate-x-1/2 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-[10px] text-gray-600 shadow-sm group-hover:block">
+                          Use this for tasks you want to do this week but
+                          haven’t assigned to a specific day yet.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div>
                     <label className="text-xs text-gray-500">
                       Scheduled date
                     </label>
@@ -1607,7 +1665,8 @@ export default function WeeklyPlanner() {
                           scheduled_date: e.target.value,
                         }))
                       }
-                      className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg"
+                      disabled={addTaskForm.is_week_priority}
+                      className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:text-gray-500"
                     />
                   </div>
 
@@ -1623,13 +1682,17 @@ export default function WeeklyPlanner() {
                           start_time: e.target.value,
                         }))
                       }
-                      disabled={Boolean(addTaskSlot)}
+                      disabled={
+                        Boolean(addTaskSlot) || addTaskForm.is_week_priority
+                      }
                       className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:text-gray-500"
                     />
-                    <p className="mt-1 text-[11px] text-gray-500">
-                      If set (with a date inside this week), the task is added
-                      to that timeslot.
-                    </p>
+                    {!addTaskForm.is_week_priority && (
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        If set (with a date inside this week), the task is added
+                        to that timeslot.
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex justify-end pt-2">
