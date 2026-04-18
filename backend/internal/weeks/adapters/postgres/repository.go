@@ -109,6 +109,9 @@ func (r *Repository) UpdateWeekStatus(ctx context.Context, userID, weekID string
 		WHERE id = $3::uuid AND user_id = $4
 	`, to, now, weekID, userID)
 	if err != nil {
+		if strings.Contains(err.Error(), "ux_weeks_single_active") {
+			return nil, fmt.Errorf("validation: only one week can be active at a time")
+		}
 		return nil, fmt.Errorf("weeks.UpdateWeekStatus: %w", err)
 	}
 	return r.GetWeek(ctx, userID, weekID)

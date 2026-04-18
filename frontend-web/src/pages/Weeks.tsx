@@ -35,14 +35,21 @@ export default function Weeks() {
   }, [load]);
 
   async function createNext() {
-    const latest = weeks.length ? new Date(weeks[0].starts_on) : new Date();
-    const startsOn = new Date(latest);
-    startsOn.setDate(startsOn.getDate() + 7);
-    const y = startsOn.getUTCFullYear();
-    const m = String(startsOn.getUTCMonth() + 1).padStart(2, "0");
-    const d = String(startsOn.getUTCDate()).padStart(2, "0");
-    await api.post("/weeks", { starts_on: `${y}-${m}-${d}` });
-    await load();
+    setError("");
+    try {
+      const latest = weeks.length ? new Date(weeks[0].starts_on) : new Date();
+      const startsOn = new Date(latest);
+      startsOn.setDate(startsOn.getDate() + 7);
+      const y = startsOn.getUTCFullYear();
+      const m = String(startsOn.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(startsOn.getUTCDate()).padStart(2, "0");
+      await api.post("/weeks", { starts_on: `${y}-${m}-${d}` });
+      await load();
+    } catch (e: any) {
+      setError(
+        e?.response?.data?.error?.message ?? "Failed to create next week.",
+      );
+    }
   }
 
   const grouped = useMemo(() => {

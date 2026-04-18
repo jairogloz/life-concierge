@@ -54,6 +54,34 @@ func (s *Service) CreateWeek(ctx context.Context, params ports.CreateWeekParams)
 		Status:   domain.WeekStatusPlanning,
 	}
 	if err := s.repo.InsertWeek(ctx, week); err != nil {
+		msg := err.Error()
+		if strings.Contains(msg, "ux_weeks_single_open") {
+			weeks, listErr := s.repo.ListWeeks(ctx, params.UserID, "")
+			if listErr != nil {
+				return nil, err
+			}
+			for _, existing := range weeks {
+				if existing.Status == domain.WeekStatusPlanning || existing.Status == domain.WeekStatusActive || existing.Status == domain.WeekStatusReview {
+					sameWindow := existing.StartsOn.Format("2006-01-02") == week.StartsOn.Format("2006-01-02") &&
+						existing.EndsOn.Format("2006-01-02") == week.EndsOn.Format("2006-01-02")
+					if sameWindow {
+						return existing, nil
+					}
+					return nil, fmt.Errorf("validation: an open week already exists; close it before creating the next week")
+				}
+			}
+		}
+		if strings.Contains(msg, "ux_weeks_user_window") {
+			weeks, listErr := s.repo.ListWeeks(ctx, params.UserID, "")
+			if listErr != nil {
+				return nil, err
+			}
+			for _, existing := range weeks {
+				if existing.StartsOn.Equal(week.StartsOn) && existing.EndsOn.Equal(week.EndsOn) {
+					return existing, nil
+				}
+			}
+		}
 		return nil, err
 	}
 	return s.repo.GetWeek(ctx, params.UserID, week.ID)
