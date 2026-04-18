@@ -554,7 +554,11 @@ export default function WeeklyPlanner() {
   }
 
   async function createTaskFromPlanner() {
-    if (!currentWeek || !addTaskForm.title.trim() || !addTaskForm.primary_role_id)
+    if (
+      !currentWeek ||
+      !addTaskForm.title.trim() ||
+      !addTaskForm.primary_role_id
+    )
       return;
     setAddTaskSaving(true);
     try {
@@ -604,7 +608,10 @@ export default function WeeklyPlanner() {
         }
       }
 
-      await Promise.all([refreshBacklogTasks(), refreshWeekData(currentWeek.id)]);
+      await Promise.all([
+        refreshBacklogTasks(),
+        refreshWeekData(currentWeek.id),
+      ]);
       setAddTaskOpen(false);
       setAddTaskSlot(null);
     } catch (e: any) {
@@ -1605,12 +1612,13 @@ export default function WeeklyPlanner() {
                         className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg"
                       >
                         <option value="">No goal</option>
-                        {(groupedGoals.get(addTaskForm.primary_role_id) ?? [])
-                          .map((goal) => (
-                            <option key={goal.id} value={goal.id}>
-                              {goal.title}
-                            </option>
-                          ))}
+                        {(
+                          groupedGoals.get(addTaskForm.primary_role_id) ?? []
+                        ).map((goal) => (
+                          <option key={goal.id} value={goal.id}>
+                            {goal.title}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -1653,7 +1661,9 @@ export default function WeeklyPlanner() {
                       <input
                         type="number"
                         min={1}
-                        value={addTaskSlot ? "60" : addTaskForm.estimated_minutes}
+                        value={
+                          addTaskSlot ? "60" : addTaskForm.estimated_minutes
+                        }
                         onChange={(e) =>
                           setAddTaskForm((prev) => ({
                             ...prev,
@@ -1667,7 +1677,9 @@ export default function WeeklyPlanner() {
                   </div>
 
                   <div>
-                    <label className="text-xs text-gray-500">Scheduled date</label>
+                    <label className="text-xs text-gray-500">
+                      Scheduled date
+                    </label>
                     <input
                       type="date"
                       value={addTaskForm.scheduled_date}
@@ -1697,7 +1709,8 @@ export default function WeeklyPlanner() {
                       className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:text-gray-500"
                     />
                     <p className="mt-1 text-[11px] text-gray-500">
-                      If set (with a date inside this week), the task is added to that timeslot.
+                      If set (with a date inside this week), the task is added
+                      to that timeslot.
                     </p>
                   </div>
 
