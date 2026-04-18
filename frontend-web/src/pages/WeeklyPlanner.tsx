@@ -35,10 +35,22 @@ const END_HOUR = 21;
 const WEEK_PRIORITY_TAG = "week_priority";
 const WEEK_PRIORITY_TAG_PREFIX = "week_priority:";
 const SLOT_ROW_HEIGHT_PX = 22;
+const DAILY_ROW_HEIGHT_PX = 28;
+const DAILY_MIN_ROWS = 2;
+const DAILY_MAX_ROWS = 4;
 
 function weekPriorityTagForWeek(weekID: string) {
   return `${WEEK_PRIORITY_TAG_PREFIX}${weekID}`;
 }
+
+function taskROI(task: Task) {
+  return task.impact / Math.max(task.effort, 1);
+}
+
+const HIDE_SCROLLBAR_STYLE = {
+  msOverflowStyle: "none",
+  scrollbarWidth: "none",
+} as const;
 
 function fmtTime(minuteOfDay?: number | null) {
   if (minuteOfDay == null) return "";
@@ -260,20 +272,31 @@ export default function WeeklyPlanner() {
   }, [allocations]);
 
   const visibleBacklog = useMemo(() => {
-    return backlog.filter((task) => {
-      const tags = task.context_tags ?? [];
-      if (currentWeekPriorityTag && tags.includes(currentWeekPriorityTag))
-        return false;
-      if (currentWeek?.status === "active" && tags.includes(WEEK_PRIORITY_TAG))
-        return false;
-      if (allocatedTaskIDs.has(task.id)) return false;
-      if (backlogRoleFilter && task.primary_role_id !== backlogRoleFilter)
-        return false;
-      if (importantOnly && task.impact < 4) return false;
-      if (task.status === "done") return false;
-      if (task.status === "archived") return false;
-      return true;
-    });
+    return backlog
+      .filter((task) => {
+        const tags = task.context_tags ?? [];
+        if (currentWeekPriorityTag && tags.includes(currentWeekPriorityTag))
+          return false;
+        if (
+          currentWeek?.status === "active" &&
+          tags.includes(WEEK_PRIORITY_TAG)
+        )
+          return false;
+        if (allocatedTaskIDs.has(task.id)) return false;
+        if (backlogRoleFilter && task.primary_role_id !== backlogRoleFilter)
+          return false;
+        if (importantOnly && task.impact < 4) return false;
+        if (task.status === "done") return false;
+        if (task.status === "archived") return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const byROI = taskROI(b) - taskROI(a);
+        if (byROI !== 0) return byROI;
+        if (b.impact !== a.impact) return b.impact - a.impact;
+        if (a.effort !== b.effort) return a.effort - b.effort;
+        return a.title.localeCompare(b.title);
+      });
   }, [
     backlog,
     currentWeek,
@@ -318,8 +341,30 @@ export default function WeeklyPlanner() {
       list.push(item);
       map.set(item.day_of_week, list);
     });
+    map.forEach((list, key) => {
+      list.sort((a, b) => {
+        const aDone = a.task_status === "done";
+        const bDone = b.task_status === "done";
+        if (aDone === bDone) return a.task_title.localeCompare(b.task_title);
+        return aDone ? 1 : -1;
+      });
+      map.set(key, list);
+    });
     return map;
   }, [allocations]);
+
+  const dailyRows = useMemo(() => {
+    const maxItemsInADay = Math.max(
+      ...DAYS.map((day) => (dailyByDay.get(day.index) ?? []).length),
+      0,
+    );
+    return Math.min(Math.max(maxItemsInADay, DAILY_MIN_ROWS), DAILY_MAX_ROWS);
+  }, [dailyByDay]);
+
+  const dailyHeightPx = useMemo(
+    () => dailyRows * DAILY_ROW_HEIGHT_PX,
+    [dailyRows],
+  );
 
   const slotByDay = useMemo(() => {
     const map = new Map<string, WeekAllocation[]>();
@@ -695,6 +740,16 @@ export default function WeeklyPlanner() {
         task = res.data.data;
       }
       if (!task) return;
+      const allocation = currentWeek
+        ? allocationByTaskID.get(task.id)
+        : undefined;
+      const allocationDate = allocation
+        ? dateForWeekDay(allocation.day_of_week)
+        : "";
+      const allocationTime =
+        allocation?.lane === "timeslot"
+          ? minuteToTimeInput(allocation.slot_minute_of_day)
+          : "";
       setSelectedTaskID(task.id);
       setTaskForm({
         title: task.title,
@@ -705,8 +760,8 @@ export default function WeeklyPlanner() {
         effort: task.effort,
         estimated_minutes:
           task.estimated_minutes != null ? String(task.estimated_minutes) : "",
-        scheduled_date: toDateInput(task.scheduled_date),
-        start_time: toTimeInput(task.scheduled_date),
+        scheduled_date: allocationDate || toDateInput(task.scheduled_date),
+        start_time: allocationTime || toTimeInput(task.scheduled_date),
         soft_deadline: toDateInput(task.soft_deadline),
         deadline: toDateInput(task.deadline),
       });
@@ -747,6 +802,27 @@ export default function WeeklyPlanner() {
       if (!taskForm.soft_deadline) payload.clear_soft_deadline = true;
       if (!taskForm.deadline) payload.clear_deadline = true;
       await api.put(`/tasks/${selectedTaskID}`, payload);
+
+      const allocation = allocationByTaskID.get(selectedTaskID);
+      if (allocation) {
+        let dayOfWeek = allocation.day_of_week;
+        if (taskForm.scheduled_date) {
+          const scheduled = parseDateOnly(taskForm.scheduled_date);
+          const weekStart = parseDateOnly(currentWeek.starts_on);
+          const weekEnd = parseDateOnly(currentWeek.ends_on);
+          if (scheduled >= weekStart && scheduled <= weekEnd) {
+            dayOfWeek = scheduled.getDay() === 0 ? 7 : scheduled.getDay();
+          }
+        }
+        const slotMinute = parseTimeInputToMinute(taskForm.start_time);
+        await api.post(`/weeks/${currentWeek.id}/allocations`, {
+          task_id: selectedTaskID,
+          day_of_week: dayOfWeek,
+          lane: slotMinute != null ? "timeslot" : "daily_priority",
+          slot_minute_of_day: slotMinute,
+        });
+      }
+
       await Promise.all([
         refreshWeekData(currentWeek.id),
         api
@@ -1078,7 +1154,7 @@ export default function WeeklyPlanner() {
                     <div key={task.id}>
                       {renderPlannerTaskCard({
                         taskID: task.id,
-                        title: task.title,
+                        title: `(${taskROI(task).toFixed(2)}) ${task.title}`,
                         checked: task.status === "done",
                         draggable: true,
                         onToggle: (checked) => {
@@ -1091,9 +1167,9 @@ export default function WeeklyPlanner() {
               </div>
             </section>
 
-            <section className="xl:col-span-4 bg-white rounded-xl border border-gray-200 p-3 overflow-y-auto overflow-x-hidden h-[78vh]">
-              <div className="w-full h-full">
-                <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-gray-200 bg-white sticky top-0 z-10">
+            <section className="xl:col-span-4 bg-white rounded-xl border border-gray-200 p-3 h-[78vh] flex flex-col overflow-hidden">
+              <div className="w-full h-full flex flex-col min-h-0">
+                <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-gray-200 bg-white">
                   <div className="px-2 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
                     Time
                   </div>
@@ -1119,7 +1195,10 @@ export default function WeeklyPlanner() {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-gray-200 bg-gray-50/60">
+                <div
+                  className="grid grid-cols-[56px_repeat(7,minmax(0,1fr))] border-b border-gray-200 bg-gray-50/60"
+                  style={{ height: `${dailyHeightPx}px` }}
+                >
                   <div className="px-2 py-2 text-[10px] text-indigo-700 uppercase tracking-wide font-semibold">
                     Daily
                   </div>
@@ -1128,7 +1207,8 @@ export default function WeeklyPlanner() {
                     return (
                       <div
                         key={day.index}
-                        className="min-h-28 max-h-28 overflow-auto p-1.5 border-l border-gray-100 rounded-none"
+                        className="h-full overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-1.5 border-l border-gray-100 rounded-none"
+                        style={HIDE_SCROLLBAR_STYLE}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => onDrop(e, day.index, "daily_priority")}
                       >
@@ -1152,7 +1232,10 @@ export default function WeeklyPlanner() {
                   })}
                 </div>
 
-                <div className="relative">
+                <div
+                  className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  style={HIDE_SCROLLBAR_STYLE}
+                >
                   {currentWeekTimeLineTop != null && (
                     <div
                       className="absolute left-[56px] right-0 z-20 pointer-events-none"
